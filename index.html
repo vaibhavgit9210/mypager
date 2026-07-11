@@ -1,0 +1,582 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:#111; --line:#2a2a2a; --fg:#eaeaea;
+    --muted:#888; --accent:#4f9dff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  /* ---------- top toolbar ---------- */
+  #bar{
+    display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+    padding:6px 8px; background:#080808; border-bottom:1px solid var(--line);
+    user-select:none;
+  }
+  .grp{display:flex; align-items:center; gap:2px; padding:0 6px; border-right:1px solid var(--line)}
+  .grp:last-child{border-right:none}
+  button.t, select.t{
+    background:var(--panel); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; height:30px; min-width:30px; padding:0 8px;
+    font-size:13px; cursor:pointer; transition:.12s;
+  }
+  button.t:hover, select.t:hover{border-color:#444; background:#1a1a1a}
+  button.t:active{transform:translateY(1px)}
+  button.t.on{background:var(--accent); border-color:var(--accent); color:#001}
+  select.t{padding:0 4px}
+  input[type=color]{
+    width:30px; height:30px; padding:0; border:1px solid var(--line);
+    border-radius:6px; background:var(--panel); cursor:pointer;
+  }
+  .lbl{font-size:11px; color:var(--muted); margin-right:2px}
+  .spacer{flex:1}
+
+  /* ---------- workspace / panes ---------- */
+  #root{flex:1; min-height:0; display:flex}
+  .split{display:flex; flex:1; min-width:0; min-height:0}
+  .split.row{flex-direction:row}
+  .split.col{flex-direction:column}
+
+  .pane{
+    flex:1; min-width:0; min-height:0; position:relative;
+    background:var(--panel); overflow:hidden; display:flex; flex-direction:column;
+  }
+  .pane.active{outline:2px solid var(--accent); outline-offset:-2px}
+
+  .pane .content{
+    flex:1; min-height:0; position:relative; overflow:auto;
+  }
+  .pane .text{
+    position:absolute; inset:0; padding:14px; outline:none;
+    overflow:auto; line-height:1.5; font-size:16px; caret-color:var(--accent);
+  }
+  .pane canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    touch-action:none; display:none;
+  }
+  .pane.draw canvas{display:block}
+  .pane.draw .text{pointer-events:none}
+
+  /* mini per-pane controls */
+  .pane .mini{
+    position:absolute; top:6px; right:6px; z-index:5; display:flex; gap:3px;
+    opacity:0; transition:.15s;
+  }
+  .pane:hover .mini, .pane.active .mini{opacity:1}
+  .mini button{
+    width:24px; height:24px; font-size:12px; line-height:1;
+    background:#000a; backdrop-filter:blur(4px); color:var(--fg);
+    border:1px solid var(--line); border-radius:5px; cursor:pointer;
+  }
+  .mini button:hover{border-color:#555; background:#000}
+  .mini button.md{width:auto; padding:0 7px; font-size:11px}
+  .mini button.mv{cursor:grab}
+  .mini button.mv:active{cursor:grabbing}
+  .pane.dragging{opacity:.4}
+  .pane.dragover{outline:2px dashed var(--accent); outline-offset:-2px}
+  .pane.dragover .content{background:#4f9dff18}
+
+  /* draggable divider */
+  .gutter{background:var(--line); flex:0 0 6px; position:relative; z-index:3}
+  .gutter:hover{background:#3a3a3a}
+  .split.row>.gutter{cursor:col-resize}
+  .split.col>.gutter{cursor:row-resize}
+
+  .hint{position:fixed; bottom:10px; left:12px; color:#555; font-size:11px; pointer-events:none}
+</style>
+
+<div id="bar">
+  <div class="grp">
+    <button class="t" id="splitV" title="Split into left/right">⇋ Split V</button>
+    <button class="t" id="splitH" title="Split into top/bottom">⇵ Split H</button>
+    <button class="t" id="del" title="Remove active pane">✕ Pane</button>
+  </div>
+
+  <div class="grp" id="textTools">
+    <button class="t" data-cmd="bold" title="Bold"><b>B</b></button>
+    <button class="t" data-cmd="italic" title="Italic"><i>I</i></button>
+    <button class="t" data-cmd="underline" title="Underline"><u>U</u></button>
+    <button class="t" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+    <select class="t" id="font" title="Font">
+      <option value="-apple-system,sans-serif">Sans</option>
+      <option value="Georgia,serif">Serif</option>
+      <option value="ui-monospace,Menlo,monospace">Mono</option>
+    </select>
+    <select class="t" id="size" title="Text size">
+      <option value="2">S</option>
+      <option value="3" selected>M</option>
+      <option value="5">L</option>
+      <option value="6">XL</option>
+      <option value="7">XXL</option>
+    </select>
+    <input type="color" id="fg" value="#eaeaea" title="Text color">
+    <button class="t" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
+    <button class="t" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+    <button class="t" data-cmd="justifyLeft" title="Align left">⯇</button>
+    <button class="t" data-cmd="justifyCenter" title="Center">≡</button>
+    <button class="t" data-cmd="justifyRight" title="Align right">⯈</button>
+    <button class="t" data-cmd="removeFormat" title="Clear formatting">⌫</button>
+    <button class="t" id="painter" title="Format painter: select source text, click, then select target">🖌 Painter</button>
+  </div>
+
+  <div class="grp" id="drawTools">
+    <button class="t" id="penColorLbl" style="cursor:default">Pen</button>
+    <input type="color" id="pen" value="#4f9dff" title="Pen color">
+    <select class="t" id="penSize" title="Brush size">
+      <option value="2">·</option>
+      <option value="4" selected>••</option>
+      <option value="8">●</option>
+      <option value="16">⬤</option>
+    </select>
+    <button class="t" id="erase" title="Eraser">Eraser</button>
+    <button class="t" id="clearPane" title="Clear drawing">Clear</button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="grp">
+    <button class="t" id="save" title="Save to browser (Ctrl+S)">Save</button>
+    <button class="t" id="export" title="Download as .html">Export</button>
+  </div>
+</div>
+
+<div id="root"></div>
+<div class="hint">Click a pane to select · ✎/T toggles text/draw · ✥ drag handle moves &amp; swaps panes · drag dividers to resize · Ctrl+S saves</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const root = $('#root');
+let active = null;
+
+/* ---------- pane creation ---------- */
+function makePane(){
+  const p = document.createElement('div');
+  p.className = 'pane';
+  p.innerHTML = `
+    <div class="mini">
+      <button class="mv" title="Drag to move / swap panes" draggable="true">✥</button>
+      <button class="md" title="Toggle text/draw">✎</button>
+      <button class="sv" title="Split vertically">⇋</button>
+      <button class="sh" title="Split horizontally">⇵</button>
+    </div>
+    <div class="content">
+      <div class="text" contenteditable="true" spellcheck="false"></div>
+      <canvas></canvas>
+    </div>`;
+  wirePane(p);
+  return p;
+}
+
+let dragSrc = null;
+function clearDragUI(){
+  dragSrc = null;
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('dragging','dragover'));
+}
+
+function wirePane(p){
+  const mini = p.querySelector('.mini');
+  // ensure a drag handle exists (older saved boards won't have one)
+  let mv = mini.querySelector('.mv');
+  if(!mv){
+    mv = document.createElement('button');
+    mv.className = 'mv'; mv.title = 'Drag to move / swap panes';
+    mv.draggable = true; mv.textContent = '✥';
+    mini.insertBefore(mv, mini.firstChild);
+  }
+  const btns = [...mini.querySelectorAll('button')];
+  const md = mini.querySelector('.md') || btns[1];
+  const sv = mini.querySelector('.sv') || btns[btns.length-2];
+  const sh = mini.querySelector('.sh') || btns[btns.length-1];
+
+  md.onclick = e => { e.stopPropagation(); toggleMode(p); };
+  sv.onclick = e => { e.stopPropagation(); setActive(p); split('row'); };
+  sh.onclick = e => { e.stopPropagation(); setActive(p); split('col'); };
+  p.addEventListener('mousedown', () => setActive(p));
+
+  // drag to move / swap
+  mv.addEventListener('dragstart', e => {
+    dragSrc = p;
+    e.dataTransfer.effectAllowed = 'move';
+    try{ e.dataTransfer.setData('text/plain','pane'); }catch(_){}
+    p.classList.add('dragging');
+  });
+  mv.addEventListener('dragend', clearDragUI);
+  p.addEventListener('dragover', e => {
+    if(dragSrc && dragSrc !== p){ e.preventDefault(); p.classList.add('dragover'); }
+  });
+  p.addEventListener('dragleave', e => {
+    if(!p.contains(e.relatedTarget)) p.classList.remove('dragover');
+  });
+  p.addEventListener('drop', e => {
+    e.preventDefault();
+    if(dragSrc && dragSrc !== p) swapPanes(dragSrc, p);
+    clearDragUI();
+  });
+
+  setupCanvas(p);
+}
+
+/* swap two panes' contents (text + drawing + mode), keeping the layout */
+function paneImg(p){ return p.querySelector('canvas').toDataURL('image/png'); }
+function setPaneImg(p, data){
+  const cv = p.querySelector('canvas'), ctx = cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(!data) return;
+  const img = new Image();
+  img.onload = () => ctx.drawImage(img,0,0);
+  img.src = data;
+}
+function setMode(p, on){ if(p.classList.contains('draw') !== on) toggleMode(p); }
+function swapPanes(a, b){
+  fitCanvas(a); fitCanvas(b);
+  const ta = a.querySelector('.text'), tb = b.querySelector('.text');
+  const th = ta.innerHTML; ta.innerHTML = tb.innerHTML; tb.innerHTML = th;
+  const ia = paneImg(a), ib = paneImg(b);
+  setPaneImg(a, ib); setPaneImg(b, ia);
+  const da = a.classList.contains('draw'), db = b.classList.contains('draw');
+  setMode(a, db); setMode(b, da);
+  setActive(b);
+  autosave();
+}
+
+function setActive(p){
+  if(active) active.classList.remove('active');
+  active = p;
+  p.classList.add('active');
+  $('#erase').classList.toggle('on', p.dataset.erase === '1');
+  fitCanvas(p);
+}
+
+function toggleMode(p){
+  p.classList.toggle('draw');
+  const btn = p.querySelector('.mini .md');
+  const drawing = p.classList.contains('draw');
+  btn.textContent = drawing ? 'T' : '✎';
+  if(drawing) fitCanvas(p);
+  else p.querySelector('.text').focus();
+}
+
+/* ---------- splitting ---------- */
+function equalize(container){
+  [...container.children]
+    .filter(c => !c.classList.contains('gutter'))
+    .forEach(c => c.style.flex = '1 1 0');
+}
+
+function split(dir){
+  if(!active) return;
+  const target = active;
+  const parent = target.parentNode;
+  const cls = dir === 'row' ? 'row' : 'col';
+
+  // Same direction as the current row/column → add as a sibling and make ALL
+  // panes in that row/column equal, instead of nesting a lopsided binary split.
+  if(parent.classList.contains('split') && parent.classList.contains(cls)){
+    const newPane = makePane();
+    target.after(makeGutter(), newPane);
+    equalize(parent);
+    setActive(target);
+    requestAnimationFrame(refitAll);
+    autosave();
+    return;
+  }
+
+  // Different direction → nest a new container in the pane's footprint,
+  // split evenly into two.
+  const container = document.createElement('div');
+  container.className = 'split ' + cls;
+  container.style.flex = target.style.flex || '1';
+  parent.replaceChild(container, target);
+  const newPane = makePane();
+  container.appendChild(target);
+  container.appendChild(makeGutter());
+  container.appendChild(newPane);
+  target.style.flex = '1 1 0';
+  newPane.style.flex = '1 1 0';
+  setActive(target);
+  requestAnimationFrame(refitAll);
+  autosave();
+}
+
+function makeGutter(){
+  const g = document.createElement('div');
+  g.className = 'gutter';
+  g.addEventListener('mousedown', startDrag);
+  return g;
+}
+
+/* ---------- delete pane ---------- */
+function deletePane(){
+  if(!active) return;
+  const p = active;
+  const container = p.parentNode;      // a .split
+  if(container === root) return;       // never delete the last pane
+
+  const kids = [...container.children];
+  const idx = kids.indexOf(p);
+  // remove pane + one adjacent gutter
+  if(kids[idx+1] && kids[idx+1].classList.contains('gutter')) kids[idx+1].remove();
+  else if(kids[idx-1] && kids[idx-1].classList.contains('gutter')) kids[idx-1].remove();
+  p.remove();
+
+  // if only one real pane/split remains, collapse the container up
+  const rem = [...container.children].filter(c => !c.classList.contains('gutter'));
+  if(rem.length === 1){
+    const survivor = rem[0];
+    survivor.style.flex = container.style.flex || '1';
+    container.parentNode.replaceChild(survivor, container);
+    setActive(firstPane(survivor));
+  } else {
+    setActive(firstPane(rem[0]));
+  }
+  refitAll();
+  autosave();
+}
+function firstPane(el){ return el.classList.contains('pane') ? el : el.querySelector('.pane'); }
+
+/* ---------- gutter drag resize ---------- */
+let drag = null;
+function startDrag(e){
+  const gutter = e.currentTarget;
+  const container = gutter.parentNode;
+  const row = container.classList.contains('row');
+  const prev = gutter.previousElementSibling;
+  const next = gutter.nextElementSibling;
+  const pr = prev.getBoundingClientRect(), nr = next.getBoundingClientRect();
+  drag = {
+    row, prev, next,
+    start: row ? e.clientX : e.clientY,
+    prevSize: row ? pr.width : pr.height,
+    nextSize: row ? nr.width : nr.height,
+  };
+  e.preventDefault();
+  document.body.style.userSelect = 'none';
+}
+window.addEventListener('mousemove', e => {
+  if(!drag) return;
+  const cur = drag.row ? e.clientX : e.clientY;
+  const d = cur - drag.start;
+  const total = drag.prevSize + drag.nextSize;
+  let a = drag.prevSize + d, b = drag.nextSize - d;
+  const min = 40;
+  if(a < min || b < min) return;
+  drag.prev.style.flex = (a/total) + ' 1 0';
+  drag.next.style.flex = (b/total) + ' 1 0';
+});
+window.addEventListener('mouseup', () => {
+  if(drag){ refitAll(); drag = null; document.body.style.userSelect = ''; autosave(); }
+});
+
+/* ---------- drawing ---------- */
+function setupCanvas(p){
+  const cv = p.querySelector('canvas');
+  const ctx = cv.getContext('2d');
+  let drawing = false, last = null;
+  const pos = e => {
+    const r = cv.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return {x:(t.clientX-r.left), y:(t.clientY-r.top)};
+  };
+  const down = e => {
+    if(!p.classList.contains('draw')) return;
+    drawing = true; last = pos(e); e.preventDefault();
+  };
+  const move = e => {
+    if(!drawing) return;
+    const cur = pos(e);
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.lineWidth = +$('#penSize').value;
+    if(p.dataset.erase === '1'){
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = +$('#penSize').value * 4;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = $('#pen').value;
+    }
+    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(cur.x,cur.y); ctx.stroke();
+    last = cur; e.preventDefault();
+  };
+  const up = () => { if(drawing){ drawing = false; autosave(); } };
+  cv.addEventListener('mousedown', down);
+  cv.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+  cv.addEventListener('touchstart', down, {passive:false});
+  cv.addEventListener('touchmove', move, {passive:false});
+  cv.addEventListener('touchend', up);
+  p._ctx = ctx;
+}
+
+function fitCanvas(p){
+  const cv = p.querySelector('canvas');
+  const r = cv.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  // preserve existing drawing
+  const prev = document.createElement('canvas');
+  prev.width = cv.width; prev.height = cv.height;
+  if(cv.width) prev.getContext('2d').drawImage(cv,0,0);
+  cv.width = r.width; cv.height = r.height;
+  if(prev.width) cv.getContext('2d').drawImage(prev,0,0);
+}
+function refitAll(){ document.querySelectorAll('.pane').forEach(fitCanvas); }
+window.addEventListener('resize', refitAll);
+
+/* ---------- toolbar: text ---------- */
+document.querySelectorAll('#textTools [data-cmd]').forEach(b => {
+  b.addEventListener('mousedown', e => e.preventDefault()); // keep selection
+  b.onclick = () => document.execCommand(b.dataset.cmd, false, null);
+});
+/* ---------- format painter ---------- */
+const PAINT_PROPS = ['fontWeight','fontStyle','textDecorationLine','color',
+                     'fontFamily','fontSize','backgroundColor'];
+let copiedFormat = null, painterArmed = false;
+const painterBtn = $('#painter');
+
+function captureFormat(){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  let node = sel.anchorNode;
+  if(node && node.nodeType === 3) node = node.parentElement;
+  if(!node || !node.closest || !node.closest('.text')) return;
+  const cs = getComputedStyle(node);
+  copiedFormat = {};
+  PAINT_PROPS.forEach(p => copiedFormat[p] = cs[p]);
+}
+function applyFormat(){
+  const sel = window.getSelection();
+  if(!sel.rangeCount || sel.isCollapsed || !copiedFormat) return;
+  const range = sel.getRangeAt(0);
+  const span = document.createElement('span');
+  PAINT_PROPS.forEach(p => { if(copiedFormat[p]) span.style[p] = copiedFormat[p]; });
+  try{
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    const r = document.createRange();
+    r.selectNodeContents(span);
+    sel.removeAllRanges(); sel.addRange(r);
+  }catch(e){}
+}
+painterBtn.addEventListener('mousedown', e => e.preventDefault()); // keep selection
+painterBtn.onclick = () => {
+  if(painterArmed){ painterArmed = false; painterBtn.classList.remove('on'); return; }
+  captureFormat();
+  if(copiedFormat){ painterArmed = true; painterBtn.classList.add('on'); }
+};
+document.addEventListener('mouseup', () => {
+  if(!painterArmed) return;
+  const sel = window.getSelection();
+  if(!sel.rangeCount || sel.isCollapsed) return;
+  let el = sel.anchorNode;
+  if(el && el.nodeType === 3) el = el.parentElement;
+  if(!el || !el.closest || !el.closest('.text')) return;
+  applyFormat();
+  painterArmed = false; painterBtn.classList.remove('on');
+});
+
+$('#font').onchange = e => document.execCommand('fontName', false, e.target.value);
+$('#size').onchange = e => document.execCommand('fontSize', false, e.target.value);
+$('#fg').oninput  = e => document.execCommand('foreColor', false, e.target.value);
+
+/* ---------- toolbar: draw ---------- */
+$('#erase').onclick = e => {
+  if(!active) return;
+  const on = active.dataset.erase === '1';
+  active.dataset.erase = on ? '0' : '1';
+  e.target.classList.toggle('on', !on);
+  if(!active.classList.contains('draw')) toggleMode(active);
+};
+$('#clearPane').onclick = () => {
+  if(!active) return;
+  const cv = active.querySelector('canvas');
+  active._ctx.clearRect(0,0,cv.width,cv.height);
+  autosave();
+};
+
+/* ---------- toolbar: structure ---------- */
+$('#splitV').onclick = () => split('row');
+$('#splitH').onclick = () => split('col');
+$('#del').onclick = deletePane;
+
+/* ---------- save / export ---------- */
+function serialize(){
+  document.querySelectorAll('.pane canvas').forEach(cv => {
+    cv.dataset.img = cv.toDataURL('image/png');
+  });
+  const clone = root.cloneNode(true);
+  clone.querySelectorAll('.pane').forEach(p =>
+    p.classList.remove('active','dragging','dragover'));
+  return clone.innerHTML;
+}
+function persist(){
+  try{ localStorage.setItem('board.v1', serialize()); return true; }
+  catch(err){ return false; }
+}
+function save(){ flash('#save', persist() ? 'Saved ✓' : 'Too big!'); }
+
+/* autosave: debounce after any change, plus a final save on close */
+let autosaveT = null;
+function autosave(){ clearTimeout(autosaveT); autosaveT = setTimeout(persist, 800); }
+root.addEventListener('input', autosave);
+window.addEventListener('beforeunload', persist);
+function restore(){
+  // exported snapshot: panes are already embedded in #root — show them as-is
+  if(root.querySelector('.pane')){ rehydrate(); afterLoad(); return; }
+  const html = localStorage.getItem('board.v1');
+  if(!html){ root.appendChild(makePane()); afterLoad(); return; }
+  root.innerHTML = html;
+  rehydrate();
+  afterLoad();
+}
+function rehydrate(){
+  // re-attach handlers to loaded DOM
+  document.querySelectorAll('.gutter').forEach(g => g.addEventListener('mousedown', startDrag));
+  document.querySelectorAll('.pane').forEach(wirePane);
+}
+function afterLoad(){
+  const first = document.querySelector('.pane');
+  if(first) setActive(first);
+  // restore canvas images after layout settles
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.pane canvas').forEach(cv => {
+      fitCanvas(cv.closest('.pane'));
+      if(cv.dataset.img){
+        const img = new Image();
+        img.onload = () => cv.getContext('2d').drawImage(img,0,0);
+        img.src = cv.dataset.img;
+      }
+    });
+  }));
+}
+function exportFile(){
+  serialize();
+  document.querySelectorAll('.pane').forEach(p =>
+    p.classList.remove('active','dragging','dragover'));
+  const full = '<!doctype html>\n'+document.documentElement.outerHTML;
+  const blob = new Blob([full], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'board.html';
+  a.click();
+  if(active) active.classList.add('active');
+}
+$('#save').onclick = save;
+$('#export').onclick = exportFile;
+window.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); save(); }
+});
+
+function flash(sel,txt){
+  const b=$(sel), old=b.textContent; b.textContent=txt;
+  setTimeout(()=>b.textContent=old,900);
+}
+
+restore();
+</script>
