@@ -90,6 +90,20 @@
   .split.row>.gutter{cursor:col-resize}
   .split.col>.gutter{cursor:row-resize}
 
+  /* ---------- lock screen ---------- */
+  #lock{
+    position:fixed; inset:0; z-index:100; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  }
+  #lock.hidden{display:none}
+  #lock input{
+    background:var(--panel); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; height:34px; padding:0 10px; font-size:14px; width:220px;
+    outline:none; text-align:center;
+  }
+  #lock input:focus{border-color:var(--accent)}
+  #lockMsg{font-size:12px; color:#f66; height:15px}
+
   .hint{position:fixed; bottom:10px; left:12px; color:#555; font-size:11px; pointer-events:none}
 </style>
 
@@ -143,12 +157,21 @@
   <div class="spacer"></div>
 
   <div class="grp">
-    <button class="t" id="save" title="Save to browser (Ctrl+S)">Save</button>
+    <span class="lbl" id="sync"></span>
+    <button class="t" id="save" title="Save + sync (Ctrl+S)">Save</button>
     <button class="t" id="export" title="Download as .html">Export</button>
   </div>
 </div>
 
 <div id="root"></div>
+
+<div id="lock">
+  <div style="font-size:22px">🔒 Board</div>
+  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="t" id="unlockBtn">Open</button>
+  <div id="lockMsg"></div>
+</div>
+
 <div class="hint">Click a pane to select · ✎/T toggles text/draw · ✥ drag handle moves &amp; swaps panes · drag dividers to resize · Ctrl+S saves</div>
 
 <script>
@@ -515,25 +538,155 @@ function serialize(){
     p.classList.remove('active','dragging','dragover'));
   return clone.innerHTML;
 }
-function persist(){
-  try{ localStorage.setItem('board.v1', serialize()); return true; }
-  catch(err){ return false; }
+/* ---------- crypto: board is AES-GCM encrypted with a key derived from the
+   password. Nothing is ever stored (locally or on GitHub) in plaintext. ---------- */
+let key = null; // CryptoKey once unlocked
+const enc8 = s => new TextEncoder().encode(s);
+function bufToB64(buf){
+  const u = new Uint8Array(buf); let s = '';
+  for(let i = 0; i < u.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
 }
-function save(){ flash('#save', persist() ? 'Saved ✓' : 'Too big!'); }
+function b64ToBuf(s){
+  const bin = atob(s); const u = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+async function deriveKey(pw){
+  const base = await crypto.subtle.importKey('raw', enc8(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: enc8('board.v2.fixed-salt'), iterations: 200000, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function encryptStr(s){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc8(s));
+  return JSON.stringify({iv: bufToB64(iv), ct: bufToB64(ct)});
+}
+async function decryptStr(blob){
+  const o = JSON.parse(blob);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: b64ToBuf(o.iv)}, key, b64ToBuf(o.ct));
+  return new TextDecoder().decode(pt);
+}
 
-/* autosave: debounce after any change, plus a final save on close */
+/* ---------- GitHub sync: encrypted blob lives as board.json in the private
+   mypager-data repo. Token is per-device (localStorage), never in code. ---------- */
+const API = 'https://api.github.com/repos/vaibhavgit9210/mypager-data/contents/board.json';
+let remoteSha = null;
+const token = () => localStorage.getItem('board.token') || '';
+const ghHeaders = () => ({Authorization: 'Bearer ' + token(), Accept: 'application/vnd.github+json'});
+function syncState(s){ $('#sync').textContent = token() ? 'sync ' + s : 'local only'; }
+
+async function remoteLoad(){
+  if(!token()) return null;
+  const r = await fetch(API, {headers: ghHeaders()});
+  if(r.status === 404){ remoteSha = null; return null; } // no board.json yet
+  if(!r.ok) throw new Error('GitHub ' + r.status);
+  const j = await r.json();
+  remoteSha = j.sha;
+  return new TextDecoder().decode(b64ToBuf(j.content.replace(/\n/g, '')));
+}
+let pushing = false, pushPending = null;
+async function remoteSave(blob){
+  if(!token()) return;
+  if(pushing){ pushPending = blob; return; }
+  pushing = true;
+  syncState('…');
+  try{
+    const put = () => fetch(API, {method:'PUT', headers: ghHeaders(), body: JSON.stringify(
+      {message:'sync', content: bufToB64(enc8(blob)), ...(remoteSha ? {sha: remoteSha} : {})})});
+    let r = await put();
+    if(r.status === 409 || r.status === 422){ // stale sha — refresh and retry once
+      const g = await fetch(API, {headers: ghHeaders()});
+      if(g.ok) remoteSha = (await g.json()).sha;
+      r = await put();
+    }
+    if(!r.ok) throw new Error('GitHub ' + r.status);
+    remoteSha = (await r.json()).content.sha;
+    syncState('✓');
+  }catch(err){ syncState('✗'); }
+  pushing = false;
+  if(pushPending){ const b = pushPending; pushPending = null; remoteSave(b); }
+}
+
+/* ---------- persistence ---------- */
+async function persist(){
+  if(!key) return false; // still locked
+  try{
+    const blob = await encryptStr(serialize());
+    try{ localStorage.setItem('board.v2', blob); }catch(_){/* quota — remote still gets it */}
+    remoteSave(blob);
+    return true;
+  }catch(err){ return false; }
+}
+function save(){ persist().then(ok => flash('#save', ok ? 'Saved ✓' : 'Failed')); }
+
+/* autosave: debounce after any change, plus best-effort saves on hide/close */
 let autosaveT = null;
 function autosave(){ clearTimeout(autosaveT); autosaveT = setTimeout(persist, 800); }
 root.addEventListener('input', autosave);
 window.addEventListener('beforeunload', persist);
-function restore(){
-  // exported snapshot: panes are already embedded in #root — show them as-is
-  if(root.querySelector('.pane')){ rehydrate(); afterLoad(); return; }
-  const html = localStorage.getItem('board.v1');
-  if(!html){ root.appendChild(makePane()); afterLoad(); return; }
+document.addEventListener('visibilitychange', () => { if(document.hidden) persist(); });
+
+/* ---------- unlock / boot ---------- */
+function loadBoard(html){
   root.innerHTML = html;
   rehydrate();
   afterLoad();
+}
+let firstPw = null; // first-run password confirmation
+function lockInfo(msg, isErr){
+  const m = $('#lockMsg');
+  m.style.color = isErr ? '#f66' : 'var(--muted)';
+  m.textContent = msg;
+}
+async function unlock(){
+  const pw = $('#pw').value;
+  if(!pw) return;
+  lockInfo('', false);
+  if(!token()){
+    const t = prompt('GitHub token for sync (Cancel = this device stays local-only):');
+    if(t && t.trim()) localStorage.setItem('board.token', t.trim());
+  }
+  key = await deriveKey(pw);
+  let blob = null;
+  try{ blob = await remoteLoad(); }
+  catch(err){ lockInfo('Sync unreachable — using local copy', false); }
+  if(blob === null) blob = localStorage.getItem('board.v2');
+  if(blob){
+    let html;
+    try{ html = await decryptStr(blob); }
+    catch(err){ key = null; lockInfo('Wrong password', true); return; }
+    loadBoard(html);
+  } else {
+    // brand-new board: confirm the password before it becomes THE password
+    if(firstPw === null){
+      firstPw = pw; key = null; $('#pw').value = '';
+      lockInfo('New board — retype password to confirm', false);
+      return;
+    }
+    if(pw !== firstPw){
+      firstPw = null; key = null; $('#pw').value = '';
+      lockInfo('Passwords differ — start over', true);
+      return;
+    }
+    const old = localStorage.getItem('board.v1'); // migrate pre-encryption save
+    if(old){ root.innerHTML = old; rehydrate(); }
+    else root.appendChild(makePane());
+    afterLoad();
+    persist();
+  }
+  syncState(remoteSha ? '✓' : '');
+  $('#lock').classList.add('hidden');
+}
+$('#unlockBtn').onclick = unlock;
+$('#pw').addEventListener('keydown', e => { if(e.key === 'Enter') unlock(); });
+
+function restore(){
+  // exported snapshot: panes are embedded in #root, already plaintext — no lock
+  if(root.querySelector('.pane')){ $('#lock').classList.add('hidden'); rehydrate(); afterLoad(); return; }
+  $('#pw').focus();
 }
 function rehydrate(){
   // re-attach handlers to loaded DOM
