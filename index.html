@@ -89,13 +89,17 @@
     var sig = b64u(new Uint8Array(d));
     var moved = null;
     try { moved = JSON.parse(ls.getItem('mypager.moved')); } catch (e) { /* none */ }
-    if (moved && moved.sig === sig && !force) return go();   // already brought over (#move shows this page again)
+    if (moved && moved.sig === sig && !force) return go();   // already brought over or skipped (#move shows this page again)
 
     var msg = document.getElementById('msg');
     document.getElementById('newLink').href = NEW;
     document.getElementById('card').hidden = false;
     document.getElementById('found').hidden = false;
-    document.getElementById('skip').onclick = function (e) { e.preventDefault(); go(); };
+    document.getElementById('skip').onclick = function (e) {
+      e.preventDefault();
+      ls.setItem('mypager.moved', JSON.stringify({sig: sig, at: Date.now(), skipped: true}));   // stop asking for this board
+      go();
+    };
     document.getElementById('save').onclick = function () {
       var a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([JSON.stringify(parcel())], {type: 'application/json'}));
