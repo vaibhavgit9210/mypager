@@ -90,7 +90,7 @@ User-facing overview in `README.md`.
   `PBKDF2(pw, "board.v2.fixed-salt", 200k)`, holding the HTML of its pane tree (maybe also
   `board.v1`, plaintext). That storage belongs to the **vaibhavkumar.is-a.dev** origin, so only a page
   there can read it. The forwarding page does: it encrypts `{board, boardPlain, label}` under a fresh
-  key, posts it to `/api/carry`, and redirects to `/#carry=<id>.<key>`. `mypager.moved` in that
+  key, posts it to `/api/carry`, and redirects to `/#carry=<id>.<key>`. `mypager.moved` (set by Move or Skip) in that
   browser stops it re-offering an unchanged board (`#move` forces the card). It also deletes the
   old `board.token`. **Keep that page alive**: it's the only bridge to boards still in browsers.
 - Boards saved 12 to 14 Jul 2026 lived under `vaibhavgit9210.github.io`, which now 301s to is-a.dev,
