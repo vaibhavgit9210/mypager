@@ -1,751 +1,131 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Board</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23060a13'/%3E%3Ctext x='32' y='46' font-size='38' text-anchor='middle'%3E%F0%9F%93%9D%3C/text%3E%3C/svg%3E">
+<meta name="robots" content="noindex">
+<title>mypager has moved</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='8' fill='%2315243a' stroke='%235aa2ff' stroke-width='1.8'/%3E%3Cpath d='M15 7v18M15 16h10' stroke='%235aa2ff' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M7.5 10.5h4M7.5 14h4M7.5 17.5h3' stroke='%239cc6ff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#0a0a0a; --panel:#111; --line:#2a2a2a; --fg:#eaeaea;
-    --muted:#888; --accent:#4f9dff;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
-  body{
-    background:var(--bg); color:var(--fg);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    display:flex; flex-direction:column; overflow:hidden;
-  }
-
-  /* ---------- top toolbar ---------- */
-  #bar{
-    display:flex; align-items:center; gap:4px; flex-wrap:wrap;
-    padding:6px 8px; background:#080808; border-bottom:1px solid var(--line);
-    user-select:none;
-  }
-  .grp{display:flex; align-items:center; gap:2px; padding:0 6px; border-right:1px solid var(--line)}
-  .grp:last-child{border-right:none}
-  button.t, select.t{
-    background:var(--panel); color:var(--fg); border:1px solid var(--line);
-    border-radius:6px; height:30px; min-width:30px; padding:0 8px;
-    font-size:13px; cursor:pointer; transition:.12s;
-  }
-  button.t:hover, select.t:hover{border-color:#444; background:#1a1a1a}
-  button.t:active{transform:translateY(1px)}
-  button.t.on{background:var(--accent); border-color:var(--accent); color:#001}
-  select.t{padding:0 4px}
-  input[type=color]{
-    width:30px; height:30px; padding:0; border:1px solid var(--line);
-    border-radius:6px; background:var(--panel); cursor:pointer;
-  }
-  .lbl{font-size:11px; color:var(--muted); margin-right:2px}
-  .spacer{flex:1}
-
-  /* ---------- workspace / panes ---------- */
-  #root{flex:1; min-height:0; display:flex}
-  .split{display:flex; flex:1; min-width:0; min-height:0}
-  .split.row{flex-direction:row}
-  .split.col{flex-direction:column}
-
-  .pane{
-    flex:1; min-width:0; min-height:0; position:relative;
-    background:var(--panel); overflow:hidden; display:flex; flex-direction:column;
-  }
-  .pane.active{outline:2px solid var(--accent); outline-offset:-2px}
-
-  .pane .content{
-    flex:1; min-height:0; position:relative; overflow:auto;
-  }
-  .pane .text{
-    position:absolute; inset:0; padding:14px; outline:none;
-    overflow:auto; line-height:1.5; font-size:16px; caret-color:var(--accent);
-  }
-  .pane canvas{
-    position:absolute; inset:0; width:100%; height:100%;
-    touch-action:none; display:none;
-  }
-  .pane.draw canvas{display:block}
-  .pane.draw .text{pointer-events:none}
-
-  /* mini per-pane controls */
-  .pane .mini{
-    position:absolute; top:6px; right:6px; z-index:5; display:flex; gap:3px;
-    opacity:0; transition:.15s;
-  }
-  .pane:hover .mini, .pane.active .mini{opacity:1}
-  .mini button{
-    width:24px; height:24px; font-size:12px; line-height:1;
-    background:#000a; backdrop-filter:blur(4px); color:var(--fg);
-    border:1px solid var(--line); border-radius:5px; cursor:pointer;
-  }
-  .mini button:hover{border-color:#555; background:#000}
-  .mini button.md{width:auto; padding:0 7px; font-size:11px}
-  .mini button.mv{cursor:grab}
-  .mini button.mv:active{cursor:grabbing}
-  .pane.dragging{opacity:.4}
-  .pane.dragover{outline:2px dashed var(--accent); outline-offset:-2px}
-  .pane.dragover .content{background:#4f9dff18}
-
-  /* draggable divider */
-  .gutter{background:var(--line); flex:0 0 6px; position:relative; z-index:3}
-  .gutter:hover{background:#3a3a3a}
-  .split.row>.gutter{cursor:col-resize}
-  .split.col>.gutter{cursor:row-resize}
-
-  /* ---------- lock screen ---------- */
-  #lock{
-    position:fixed; inset:0; z-index:100; background:var(--bg);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-  }
-  #lock.hidden{display:none}
-  #lock input{
-    background:var(--panel); color:var(--fg); border:1px solid var(--line);
-    border-radius:6px; height:34px; padding:0 10px; font-size:14px; width:220px;
-    outline:none; text-align:center;
-  }
-  #lock input:focus{border-color:var(--accent)}
-  #lockMsg{font-size:12px; color:#f66; height:15px}
-
-  .hint{position:fixed; bottom:10px; left:12px; color:#555; font-size:11px; pointer-events:none}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;
+    background:radial-gradient(1100px 560px at 50% -12%,#13233a 0%,#0b0d10 62%);color:#e6e8ec;
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{width:min(460px,100%);padding:28px;border:1px solid #22262d;border-radius:16px;background:rgba(17,19,23,.94);box-shadow:0 24px 70px rgba(0,0,0,.45)}
+  h1{margin:0 0 8px;font-size:20px;letter-spacing:-.01em}
+  h2{margin:22px 0 6px;font-size:16px}
+  p{margin:0 0 10px;color:#a3abb8}
+  a{color:#7db6ff}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 8px}
+  button{height:38px;padding:0 15px;border-radius:9px;border:1px solid #2e333c;background:#191c22;color:#e6e8ec;font:inherit;font-weight:600;cursor:pointer}
+  button.primary{background:#5aa2ff;border-color:#5aa2ff;color:#06101c}
+  button:disabled{opacity:.6;cursor:default}
+  .small{font-size:13px}
+  #msg{min-height:22px;font-size:13px}
+  #msg.bad{color:#ff8a8a}
 </style>
-
-<div id="bar">
-  <div class="grp">
-    <button class="t" id="splitV" title="Split into left/right">⇋ Split V</button>
-    <button class="t" id="splitH" title="Split into top/bottom">⇵ Split H</button>
-    <button class="t" id="del" title="Remove active pane">✕ Pane</button>
-  </div>
-
-  <div class="grp" id="textTools">
-    <button class="t" data-cmd="bold" title="Bold"><b>B</b></button>
-    <button class="t" data-cmd="italic" title="Italic"><i>I</i></button>
-    <button class="t" data-cmd="underline" title="Underline"><u>U</u></button>
-    <button class="t" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
-    <select class="t" id="font" title="Font">
-      <option value="-apple-system,sans-serif">Sans</option>
-      <option value="Georgia,serif">Serif</option>
-      <option value="ui-monospace,Menlo,monospace">Mono</option>
-    </select>
-    <select class="t" id="size" title="Text size">
-      <option value="2">S</option>
-      <option value="3" selected>M</option>
-      <option value="5">L</option>
-      <option value="6">XL</option>
-      <option value="7">XXL</option>
-    </select>
-    <input type="color" id="fg" value="#eaeaea" title="Text color">
-    <button class="t" data-cmd="insertUnorderedList" title="Bullet list">• List</button>
-    <button class="t" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-    <button class="t" data-cmd="justifyLeft" title="Align left">⯇</button>
-    <button class="t" data-cmd="justifyCenter" title="Center">≡</button>
-    <button class="t" data-cmd="justifyRight" title="Align right">⯈</button>
-    <button class="t" data-cmd="removeFormat" title="Clear formatting">⌫</button>
-    <button class="t" id="painter" title="Format painter: select source text, click, then select target">🖌 Painter</button>
-  </div>
-
-  <div class="grp" id="drawTools">
-    <button class="t" id="penColorLbl" style="cursor:default">Pen</button>
-    <input type="color" id="pen" value="#4f9dff" title="Pen color">
-    <select class="t" id="penSize" title="Brush size">
-      <option value="2">·</option>
-      <option value="4" selected>••</option>
-      <option value="8">●</option>
-      <option value="16">⬤</option>
-    </select>
-    <button class="t" id="erase" title="Eraser">Eraser</button>
-    <button class="t" id="clearPane" title="Clear drawing">Clear</button>
-  </div>
-
-  <div class="spacer"></div>
-
-  <div class="grp">
-    <span class="lbl" id="sync"></span>
-    <button class="t" id="save" title="Save + sync (Ctrl+S)">Save</button>
-    <button class="t" id="export" title="Download as .html">Export</button>
-  </div>
-</div>
-
-<div id="root"></div>
-
-<div id="lock">
-  <div style="font-size:22px">🔒 Board</div>
-  <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
-  <button class="t" id="unlockBtn">Open</button>
-  <div id="lockMsg"></div>
-</div>
-
-<div class="hint">Click a pane to select · ✎/T toggles text/draw · ✥ drag handle moves &amp; swaps panes · drag dividers to resize · Ctrl+S saves</div>
-
-<script>
-const $ = s => document.querySelector(s);
-const root = $('#root');
-let active = null;
-
-/* ---------- pane creation ---------- */
-function makePane(){
-  const p = document.createElement('div');
-  p.className = 'pane';
-  p.innerHTML = `
-    <div class="mini">
-      <button class="mv" title="Drag to move / swap panes" draggable="true">✥</button>
-      <button class="md" title="Toggle text/draw">✎</button>
-      <button class="sv" title="Split vertically">⇋</button>
-      <button class="sh" title="Split horizontally">⇵</button>
+</head>
+<body>
+<main id="card" hidden>
+  <h1>mypager has moved</h1>
+  <p>It now lives at <a id="newLink" href="https://mypager.vaibhavpro9210.workers.dev/">mypager.vaibhavpro9210.workers.dev</a>, with an ID and password, folders and single notes, and your notes kept on a private server instead of GitHub.</p>
+  <section id="found" hidden>
+    <h2>This browser still has your old board</h2>
+    <p>Bring it across once. It stays locked with your old board password the whole way, and the new mypager asks for that password when it opens it (unless you use the same one there).</p>
+    <div class="row">
+      <button class="primary" id="move">Move it to the new mypager</button>
+      <button id="save">Download a copy</button>
     </div>
-    <div class="content">
-      <div class="text" contenteditable="true" spellcheck="false"></div>
-      <canvas></canvas>
-    </div>`;
-  wirePane(p);
-  return p;
-}
-
-let dragSrc = null;
-function clearDragUI(){
-  dragSrc = null;
-  document.querySelectorAll('.pane').forEach(x => x.classList.remove('dragging','dragover'));
-}
-
-function wirePane(p){
-  const mini = p.querySelector('.mini');
-  // ensure a drag handle exists (older saved boards won't have one)
-  let mv = mini.querySelector('.mv');
-  if(!mv){
-    mv = document.createElement('button');
-    mv.className = 'mv'; mv.title = 'Drag to move / swap panes';
-    mv.draggable = true; mv.textContent = '✥';
-    mini.insertBefore(mv, mini.firstChild);
-  }
-  const btns = [...mini.querySelectorAll('button')];
-  const md = mini.querySelector('.md') || btns[1];
-  const sv = mini.querySelector('.sv') || btns[btns.length-2];
-  const sh = mini.querySelector('.sh') || btns[btns.length-1];
-
-  md.onclick = e => { e.stopPropagation(); toggleMode(p); };
-  sv.onclick = e => { e.stopPropagation(); setActive(p); split('row'); };
-  sh.onclick = e => { e.stopPropagation(); setActive(p); split('col'); };
-  p.addEventListener('mousedown', () => setActive(p));
-
-  // drag to move / swap
-  mv.addEventListener('dragstart', e => {
-    dragSrc = p;
-    e.dataTransfer.effectAllowed = 'move';
-    try{ e.dataTransfer.setData('text/plain','pane'); }catch(_){}
-    p.classList.add('dragging');
-  });
-  mv.addEventListener('dragend', clearDragUI);
-  p.addEventListener('dragover', e => {
-    if(dragSrc && dragSrc !== p){ e.preventDefault(); p.classList.add('dragover'); }
-  });
-  p.addEventListener('dragleave', e => {
-    if(!p.contains(e.relatedTarget)) p.classList.remove('dragover');
-  });
-  p.addEventListener('drop', e => {
-    e.preventDefault();
-    if(dragSrc && dragSrc !== p) swapPanes(dragSrc, p);
-    clearDragUI();
-  });
-
-  setupCanvas(p);
-}
-
-/* swap two panes' contents (text + drawing + mode), keeping the layout */
-function paneImg(p){ return p.querySelector('canvas').toDataURL('image/png'); }
-function setPaneImg(p, data){
-  const cv = p.querySelector('canvas'), ctx = cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height);
-  if(!data) return;
-  const img = new Image();
-  img.onload = () => ctx.drawImage(img,0,0);
-  img.src = data;
-}
-function setMode(p, on){ if(p.classList.contains('draw') !== on) toggleMode(p); }
-function swapPanes(a, b){
-  fitCanvas(a); fitCanvas(b);
-  const ta = a.querySelector('.text'), tb = b.querySelector('.text');
-  const th = ta.innerHTML; ta.innerHTML = tb.innerHTML; tb.innerHTML = th;
-  const ia = paneImg(a), ib = paneImg(b);
-  setPaneImg(a, ib); setPaneImg(b, ia);
-  const da = a.classList.contains('draw'), db = b.classList.contains('draw');
-  setMode(a, db); setMode(b, da);
-  setActive(b);
-  autosave();
-}
-
-function setActive(p){
-  if(active) active.classList.remove('active');
-  active = p;
-  p.classList.add('active');
-  $('#erase').classList.toggle('on', p.dataset.erase === '1');
-  fitCanvas(p);
-}
-
-function toggleMode(p){
-  p.classList.toggle('draw');
-  const btn = p.querySelector('.mini .md');
-  const drawing = p.classList.contains('draw');
-  btn.textContent = drawing ? 'T' : '✎';
-  if(drawing) fitCanvas(p);
-  else p.querySelector('.text').focus();
-}
-
-/* ---------- splitting ---------- */
-function equalize(container){
-  [...container.children]
-    .filter(c => !c.classList.contains('gutter'))
-    .forEach(c => c.style.flex = '1 1 0');
-}
-
-function split(dir){
-  if(!active) return;
-  const target = active;
-  const parent = target.parentNode;
-  const cls = dir === 'row' ? 'row' : 'col';
-
-  // Same direction as the current row/column → add as a sibling and make ALL
-  // panes in that row/column equal, instead of nesting a lopsided binary split.
-  if(parent.classList.contains('split') && parent.classList.contains(cls)){
-    const newPane = makePane();
-    target.after(makeGutter(), newPane);
-    equalize(parent);
-    setActive(target);
-    requestAnimationFrame(refitAll);
-    autosave();
-    return;
-  }
-
-  // Different direction → nest a new container in the pane's footprint,
-  // split evenly into two.
-  const container = document.createElement('div');
-  container.className = 'split ' + cls;
-  container.style.flex = target.style.flex || '1';
-  parent.replaceChild(container, target);
-  const newPane = makePane();
-  container.appendChild(target);
-  container.appendChild(makeGutter());
-  container.appendChild(newPane);
-  target.style.flex = '1 1 0';
-  newPane.style.flex = '1 1 0';
-  setActive(target);
-  requestAnimationFrame(refitAll);
-  autosave();
-}
-
-function makeGutter(){
-  const g = document.createElement('div');
-  g.className = 'gutter';
-  g.addEventListener('mousedown', startDrag);
-  return g;
-}
-
-/* ---------- delete pane ---------- */
-function deletePane(){
-  if(!active) return;
-  const p = active;
-  const container = p.parentNode;      // a .split
-  if(container === root) return;       // never delete the last pane
-
-  const kids = [...container.children];
-  const idx = kids.indexOf(p);
-  // remove pane + one adjacent gutter
-  if(kids[idx+1] && kids[idx+1].classList.contains('gutter')) kids[idx+1].remove();
-  else if(kids[idx-1] && kids[idx-1].classList.contains('gutter')) kids[idx-1].remove();
-  p.remove();
-
-  // if only one real pane/split remains, collapse the container up
-  const rem = [...container.children].filter(c => !c.classList.contains('gutter'));
-  if(rem.length === 1){
-    const survivor = rem[0];
-    survivor.style.flex = container.style.flex || '1';
-    container.parentNode.replaceChild(survivor, container);
-    setActive(firstPane(survivor));
-  } else {
-    setActive(firstPane(rem[0]));
-  }
-  refitAll();
-  autosave();
-}
-function firstPane(el){ return el.classList.contains('pane') ? el : el.querySelector('.pane'); }
-
-/* ---------- gutter drag resize ---------- */
-let drag = null;
-function startDrag(e){
-  const gutter = e.currentTarget;
-  const container = gutter.parentNode;
-  const row = container.classList.contains('row');
-  const prev = gutter.previousElementSibling;
-  const next = gutter.nextElementSibling;
-  const pr = prev.getBoundingClientRect(), nr = next.getBoundingClientRect();
-  drag = {
-    row, prev, next,
-    start: row ? e.clientX : e.clientY,
-    prevSize: row ? pr.width : pr.height,
-    nextSize: row ? nr.width : nr.height,
-  };
-  e.preventDefault();
-  document.body.style.userSelect = 'none';
-}
-window.addEventListener('mousemove', e => {
-  if(!drag) return;
-  const cur = drag.row ? e.clientX : e.clientY;
-  const d = cur - drag.start;
-  const total = drag.prevSize + drag.nextSize;
-  let a = drag.prevSize + d, b = drag.nextSize - d;
-  const min = 40;
-  if(a < min || b < min) return;
-  drag.prev.style.flex = (a/total) + ' 1 0';
-  drag.next.style.flex = (b/total) + ' 1 0';
-});
-window.addEventListener('mouseup', () => {
-  if(drag){ refitAll(); drag = null; document.body.style.userSelect = ''; autosave(); }
-});
-
-/* ---------- drawing ---------- */
-function setupCanvas(p){
-  const cv = p.querySelector('canvas');
-  const ctx = cv.getContext('2d');
-  let drawing = false, last = null;
-  const pos = e => {
-    const r = cv.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return {x:(t.clientX-r.left), y:(t.clientY-r.top)};
-  };
-  const down = e => {
-    if(!p.classList.contains('draw')) return;
-    drawing = true; last = pos(e); e.preventDefault();
-  };
-  const move = e => {
-    if(!drawing) return;
-    const cur = pos(e);
-    ctx.lineJoin = ctx.lineCap = 'round';
-    ctx.lineWidth = +$('#penSize').value;
-    if(p.dataset.erase === '1'){
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.strokeStyle = 'rgba(0,0,0,1)';
-      ctx.lineWidth = +$('#penSize').value * 4;
-    } else {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = $('#pen').value;
-    }
-    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(cur.x,cur.y); ctx.stroke();
-    last = cur; e.preventDefault();
-  };
-  const up = () => { if(drawing){ drawing = false; autosave(); } };
-  cv.addEventListener('mousedown', down);
-  cv.addEventListener('mousemove', move);
-  window.addEventListener('mouseup', up);
-  cv.addEventListener('touchstart', down, {passive:false});
-  cv.addEventListener('touchmove', move, {passive:false});
-  cv.addEventListener('touchend', up);
-  p._ctx = ctx;
-}
-
-function fitCanvas(p){
-  const cv = p.querySelector('canvas');
-  const r = cv.getBoundingClientRect();
-  if(!r.width || !r.height) return;
-  // preserve existing drawing
-  const prev = document.createElement('canvas');
-  prev.width = cv.width; prev.height = cv.height;
-  if(cv.width) prev.getContext('2d').drawImage(cv,0,0);
-  cv.width = r.width; cv.height = r.height;
-  if(prev.width) cv.getContext('2d').drawImage(prev,0,0);
-}
-function refitAll(){ document.querySelectorAll('.pane').forEach(fitCanvas); }
-window.addEventListener('resize', refitAll);
-
-/* ---------- toolbar: text ---------- */
-document.querySelectorAll('#textTools [data-cmd]').forEach(b => {
-  b.addEventListener('mousedown', e => e.preventDefault()); // keep selection
-  b.onclick = () => document.execCommand(b.dataset.cmd, false, null);
-});
-/* ---------- format painter ---------- */
-const PAINT_PROPS = ['fontWeight','fontStyle','textDecorationLine','color',
-                     'fontFamily','fontSize','backgroundColor'];
-let copiedFormat = null, painterArmed = false;
-const painterBtn = $('#painter');
-
-function captureFormat(){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return;
-  let node = sel.anchorNode;
-  if(node && node.nodeType === 3) node = node.parentElement;
-  if(!node || !node.closest || !node.closest('.text')) return;
-  const cs = getComputedStyle(node);
-  copiedFormat = {};
-  PAINT_PROPS.forEach(p => copiedFormat[p] = cs[p]);
-}
-function applyFormat(){
-  const sel = window.getSelection();
-  if(!sel.rangeCount || sel.isCollapsed || !copiedFormat) return;
-  const range = sel.getRangeAt(0);
-  const span = document.createElement('span');
-  PAINT_PROPS.forEach(p => { if(copiedFormat[p]) span.style[p] = copiedFormat[p]; });
-  try{
-    span.appendChild(range.extractContents());
-    range.insertNode(span);
-    const r = document.createRange();
-    r.selectNodeContents(span);
-    sel.removeAllRanges(); sel.addRange(r);
-  }catch(e){}
-}
-painterBtn.addEventListener('mousedown', e => e.preventDefault()); // keep selection
-painterBtn.onclick = () => {
-  if(painterArmed){ painterArmed = false; painterBtn.classList.remove('on'); return; }
-  captureFormat();
-  if(copiedFormat){ painterArmed = true; painterBtn.classList.add('on'); }
-};
-document.addEventListener('mouseup', () => {
-  if(!painterArmed) return;
-  const sel = window.getSelection();
-  if(!sel.rangeCount || sel.isCollapsed) return;
-  let el = sel.anchorNode;
-  if(el && el.nodeType === 3) el = el.parentElement;
-  if(!el || !el.closest || !el.closest('.text')) return;
-  applyFormat();
-  painterArmed = false; painterBtn.classList.remove('on');
-});
-
-$('#font').onchange = e => document.execCommand('fontName', false, e.target.value);
-$('#size').onchange = e => document.execCommand('fontSize', false, e.target.value);
-$('#fg').oninput  = e => document.execCommand('foreColor', false, e.target.value);
-
-/* ---------- toolbar: draw ---------- */
-$('#erase').onclick = e => {
-  if(!active) return;
-  const on = active.dataset.erase === '1';
-  active.dataset.erase = on ? '0' : '1';
-  e.target.classList.toggle('on', !on);
-  if(!active.classList.contains('draw')) toggleMode(active);
-};
-$('#clearPane').onclick = () => {
-  if(!active) return;
-  const cv = active.querySelector('canvas');
-  active._ctx.clearRect(0,0,cv.width,cv.height);
-  autosave();
-};
-
-/* ---------- toolbar: structure ---------- */
-$('#splitV').onclick = () => split('row');
-$('#splitH').onclick = () => split('col');
-$('#del').onclick = deletePane;
-
-/* ---------- save / export ---------- */
-function serialize(){
-  document.querySelectorAll('.pane canvas').forEach(cv => {
-    cv.dataset.img = cv.toDataURL('image/png');
-  });
-  const clone = root.cloneNode(true);
-  clone.querySelectorAll('.pane').forEach(p =>
-    p.classList.remove('active','dragging','dragover'));
-  return clone.innerHTML;
-}
-/* ---------- crypto: board is AES-GCM encrypted with a key derived from the
-   password. Nothing is ever stored (locally or on GitHub) in plaintext. ---------- */
-let key = null; // CryptoKey once unlocked
-const enc8 = s => new TextEncoder().encode(s);
-function bufToB64(buf){
-  const u = new Uint8Array(buf); let s = '';
-  for(let i = 0; i < u.length; i += 0x8000)
-    s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-function b64ToBuf(s){
-  const bin = atob(s); const u = new Uint8Array(bin.length);
-  for(let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-  return u;
-}
-async function deriveKey(pw){
-  const base = await crypto.subtle.importKey('raw', enc8(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    {name:'PBKDF2', salt: enc8('board.v2.fixed-salt'), iterations: 200000, hash:'SHA-256'},
-    base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
-}
-async function encryptStr(s){
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc8(s));
-  return JSON.stringify({iv: bufToB64(iv), ct: bufToB64(ct)});
-}
-async function decryptStr(blob){
-  const o = JSON.parse(blob);
-  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: b64ToBuf(o.iv)}, key, b64ToBuf(o.ct));
-  return new TextDecoder().decode(pt);
-}
-
-/* ---------- GitHub sync: encrypted blob lives as board.json in the private
-   mypager-data repo. Token is per-device (localStorage), never in code. ---------- */
-const API = 'https://api.github.com/repos/vaibhavgit9210/mypager-data/contents/board.json';
-let remoteSha = null;
-const token = () => localStorage.getItem('board.token') || '';
-const ghHeaders = () => ({Authorization: 'Bearer ' + token(), Accept: 'application/vnd.github+json'});
-function syncState(s){ $('#sync').textContent = token() ? 'sync ' + s : 'local only'; }
-
-async function remoteLoad(){
-  if(!token()) return null;
-  const r = await fetch(API, {headers: ghHeaders()});
-  if(r.status === 404){ remoteSha = null; return null; } // no board.json yet
-  if(!r.ok) throw new Error('GitHub ' + r.status);
-  const j = await r.json();
-  remoteSha = j.sha;
-  return new TextDecoder().decode(b64ToBuf(j.content.replace(/\n/g, '')));
-}
-let pushing = false, pushPending = null;
-async function remoteSave(blob){
-  if(!token()) return;
-  if(pushing){ pushPending = blob; return; }
-  pushing = true;
-  syncState('…');
-  try{
-    const put = () => fetch(API, {method:'PUT', headers: ghHeaders(), body: JSON.stringify(
-      {message:'sync', content: bufToB64(enc8(blob)), ...(remoteSha ? {sha: remoteSha} : {})})});
-    let r = await put();
-    if(r.status === 409 || r.status === 422){ // stale sha — refresh and retry once
-      const g = await fetch(API, {headers: ghHeaders()});
-      if(g.ok) remoteSha = (await g.json()).sha;
-      r = await put();
-    }
-    if(!r.ok) throw new Error('GitHub ' + r.status);
-    remoteSha = (await r.json()).content.sha;
-    syncState('✓');
-  }catch(err){ syncState('✗'); }
-  pushing = false;
-  if(pushPending){ const b = pushPending; pushPending = null; remoteSave(b); }
-}
-
-/* ---------- persistence ---------- */
-async function persist(){
-  if(!key) return false; // still locked
-  try{
-    const blob = await encryptStr(serialize());
-    try{ localStorage.setItem('board.v2', blob); }catch(_){/* quota — remote still gets it */}
-    remoteSave(blob);
-    return true;
-  }catch(err){ return false; }
-}
-function save(){ persist().then(ok => flash('#save', ok ? 'Saved ✓' : 'Failed')); }
-
-/* autosave: debounce after any change, plus best-effort saves on hide/close */
-let autosaveT = null;
-function autosave(){ clearTimeout(autosaveT); autosaveT = setTimeout(persist, 800); }
-root.addEventListener('input', autosave);
-window.addEventListener('beforeunload', persist);
-document.addEventListener('visibilitychange', () => { if(document.hidden) persist(); });
-
-/* ---------- unlock / boot ---------- */
-function loadBoard(html){
-  root.innerHTML = html;
-  rehydrate();
-  afterLoad();
-}
-let firstPw = null; // first-run password confirmation
-function lockInfo(msg, isErr){
-  const m = $('#lockMsg');
-  m.style.color = isErr ? '#f66' : 'var(--muted)';
-  m.textContent = msg;
-}
-async function unlock(){
-  const pw = $('#pw').value;
-  if(!pw) return;
-  lockInfo('', false);
-  if(!token()){
-    const t = prompt('GitHub token for sync (Cancel = this device stays local-only):');
-    if(t && t.trim()) localStorage.setItem('board.token', t.trim());
-  }
-  key = await deriveKey(pw);
-  let blob = null;
-  try{ blob = await remoteLoad(); }
-  catch(err){ lockInfo('Sync unreachable — using local copy', false); }
-  if(blob === null) blob = localStorage.getItem('board.v2');
-  if(blob){
-    let html;
-    try{ html = await decryptStr(blob); }
-    catch(err){ key = null; lockInfo('Wrong password', true); return; }
-    loadBoard(html);
-  } else {
-    // brand-new board: confirm the password before it becomes THE password
-    if(firstPw === null){
-      firstPw = pw; key = null; $('#pw').value = '';
-      lockInfo('New board — retype password to confirm', false);
-      return;
-    }
-    if(pw !== firstPw){
-      firstPw = null; key = null; $('#pw').value = '';
-      lockInfo('Passwords differ — start over', true);
-      return;
-    }
-    const old = localStorage.getItem('board.v1'); // migrate pre-encryption save
-    if(old){ root.innerHTML = old; rehydrate(); }
-    else root.appendChild(makePane());
-    afterLoad();
-    persist();
-  }
-  syncState(remoteSha ? '✓' : '');
-  $('#lock').classList.add('hidden');
-}
-$('#unlockBtn').onclick = unlock;
-$('#pw').addEventListener('keydown', e => { if(e.key === 'Enter') unlock(); });
-
-function restore(){
-  // exported snapshot: panes are embedded in #root, already plaintext — no lock
-  if(root.querySelector('.pane')){ $('#lock').classList.add('hidden'); rehydrate(); afterLoad(); return; }
-  $('#pw').focus();
-}
-function rehydrate(){
-  // re-attach handlers to loaded DOM
-  document.querySelectorAll('.gutter').forEach(g => g.addEventListener('mousedown', startDrag));
-  document.querySelectorAll('.pane').forEach(wirePane);
-}
-function afterLoad(){
-  const first = document.querySelector('.pane');
-  if(first) setActive(first);
-  // restore canvas images after layout settles
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    document.querySelectorAll('.pane canvas').forEach(cv => {
-      fitCanvas(cv.closest('.pane'));
-      if(cv.dataset.img){
-        const img = new Image();
-        img.onload = () => cv.getContext('2d').drawImage(img,0,0);
-        img.src = cv.dataset.img;
-      }
-    });
-  }));
-}
-function exportFile(){
-  serialize();
-  document.querySelectorAll('.pane').forEach(p =>
-    p.classList.remove('active','dragging','dragover'));
-  const full = '<!doctype html>\n'+document.documentElement.outerHTML;
-  const blob = new Blob([full], {type:'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'board.html';
-  a.click();
-  if(active) active.classList.add('active');
-}
-$('#save').onclick = save;
-$('#export').onclick = exportFile;
-window.addEventListener('keydown', e => {
-  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); save(); }
-});
-
-function flash(sel,txt){
-  const b=$(sel), old=b.textContent; b.textContent=txt;
-  setTimeout(()=>b.textContent=old,900);
-}
-
-restore();
-</script>
-
+    <p class="small"><a href="#" id="skip">Skip, just open the new mypager</a></p>
+    <p id="msg" role="status"></p>
+  </section>
+</main>
 <script>
-/* anonymous visit beacon — counts loads + presence heartbeats, no cookies */
-(function(){
-  if (location.protocol === "file:" || location.hostname === "localhost") return;
-  var EP = "https://site-analytics.vaibhavpro9210.workers.dev/ping";
-  var sid = sessionStorage.getItem("va_sid");
-  if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("va_sid", sid); }
-  function send(kind){
-    try { navigator.sendBeacon(EP, new Blob([JSON.stringify({sid:sid, page:location.pathname, kind:kind})], {type:"text/plain"})); } catch(e){}
+/* Forwards to the new mypager. If this browser still holds a board from the old one (localStorage
+   board.v2, encrypted with the old password, or board.v1, the plaintext save from before that),
+   it offers to carry it over: the parcel is encrypted again under a one-off key, posted to the new
+   server, and the key rides along in the URL fragment, which never reaches any server.
+   Nothing here deletes the old copy. */
+(function () {
+  var NEW = 'https://mypager.vaibhavpro9210.workers.dev/';
+  var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var to = new URLSearchParams(location.search).get('to');   // test hook, honoured only on localhost
+  if (local && to && /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?\/$/.test(to)) NEW = to;
+  if (location.href.indexOf(NEW) === 0) return;
+
+  var params = new URLSearchParams(location.hash.slice(1));
+  var force = params.has('move');
+  params.delete('move');
+  var ls = null;
+  try { ls = window.localStorage; } catch (e) { /* storage blocked */ }
+  var v2 = ls && ls.getItem('board.v2'), v1 = ls && ls.getItem('board.v1');
+  if (ls) ls.removeItem('board.token');   // GitHub sync is gone; don't leave its token lying around
+
+  function go(carry) {
+    if (carry) params.set('carry', (params.get('carry') ? params.get('carry') + ',' : '') + carry);
+    var h = params.toString();
+    location.replace(NEW + (h ? '#' + h : ''));
   }
-  send("load");
-  setInterval(function(){ if (document.visibilityState === "visible") send("beat"); }, 60000);
+  if (!v2 && !v1) return go();
+  if (!window.crypto || !crypto.subtle) return go();
+
+  function b64u(u) {
+    var s = '';
+    for (var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function browserName() {
+    var u = navigator.userAgent;
+    var b = /Edg\//.test(u) ? 'Edge' : /OPR\//.test(u) ? 'Opera' : /Firefox\//.test(u) ? 'Firefox'
+      : /Chrome\//.test(u) ? (navigator.brave ? 'Brave' : 'Chrome') : /Safari\//.test(u) ? 'Safari' : 'a browser';
+    var o = /iPhone|iPad/.test(u) ? 'iPhone' : /Android/.test(u) ? 'Android' : /Mac OS X/.test(u) ? 'Mac'
+      : /Windows/.test(u) ? 'Windows' : /Linux/.test(u) ? 'Linux' : '';
+    return b + (o ? ' on ' + o : '');
+  }
+  function parcel() {
+    return {v: 1, kind: 'mypager-board', from: location.origin, label: browserName(), at: Date.now(), board: v2 || null, boardPlain: v1 || null};
+  }
+
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode((v2 || '') + '|' + (v1 || ''))).then(function (d) {
+    var sig = b64u(new Uint8Array(d));
+    var moved = null;
+    try { moved = JSON.parse(ls.getItem('mypager.moved')); } catch (e) { /* none */ }
+    if (moved && moved.sig === sig && !force) return go();   // already brought over (#move shows this page again)
+
+    var msg = document.getElementById('msg');
+    document.getElementById('newLink').href = NEW;
+    document.getElementById('card').hidden = false;
+    document.getElementById('found').hidden = false;
+    document.getElementById('skip').onclick = function (e) { e.preventDefault(); go(); };
+    document.getElementById('save').onclick = function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(parcel())], {type: 'application/json'}));
+      a.download = 'mypager-old-board-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      msg.className = ''; msg.textContent = 'Saved. The new mypager can import it from its account menu (Import an old board file).';
+    };
+    var btn = document.getElementById('move');
+    btn.onclick = async function () {
+      btn.disabled = true; msg.className = ''; msg.textContent = 'Packing it up…';
+      try {
+        var key = await crypto.subtle.generateKey({name: 'AES-GCM', length: 256}, true, ['encrypt']);
+        var iv = crypto.getRandomValues(new Uint8Array(12));
+        var ct = new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv: iv}, key, new TextEncoder().encode(JSON.stringify(parcel()))));
+        var body = new Uint8Array(12 + ct.length);
+        body.set(iv); body.set(ct, 12);
+        var r = await fetch(NEW + 'api/carry', {method: 'POST', headers: {'Content-Type': 'application/octet-stream'}, body: body});
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || !j.id) throw new Error(j.error || ('error ' + r.status));
+        var raw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
+        ls.setItem('mypager.moved', JSON.stringify({sig: sig, at: Date.now()}));
+        msg.textContent = 'Done. Opening the new mypager…';
+        go(j.id + '.' + b64u(raw));
+      } catch (e) {
+        btn.disabled = false; msg.className = 'bad';
+        msg.textContent = "Couldn't send it (" + e.message + '). Try again, or use Download a copy.';
+      }
+    };
+  });
 })();
 </script>
+</body>
+</html>

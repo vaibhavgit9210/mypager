@@ -1,0 +1,2353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="mypager">
+<title>mypager</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='8' fill='%2315243a' stroke='%235aa2ff' stroke-width='1.8'/%3E%3Cpath d='M15 7v18M15 16h10' stroke='%235aa2ff' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M7.5 10.5h4M7.5 14h4M7.5 17.5h3' stroke='%239cc6ff' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{
+    --bg:#0b0d10; --side:#0e1014; --panel:#121418; --raise:#191c22; --hover:#1c2027;
+    --line:#22262d; --line2:#2e333c; --fg:#e6e8ec; --muted:#8b93a1; --faint:#5f6774;
+    --accent:#5aa2ff; --accent2:#7db6ff; --accent-ink:#06101c; --sel:#18263a;
+    --ok:#47c08a; --warn:#e2b04a; --bad:#ff6b6b;
+    --side-w:272px; --top-h:50px;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--fg); overflow:hidden;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  [hidden]{display:none !important}
+  button,input,select{font:inherit;color:inherit}
+  a{color:var(--accent2)}
+  .ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  .ib{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;flex:none}
+  .ib:hover{background:var(--hover);color:var(--fg)}
+  .btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);background:var(--raise);cursor:pointer;font-weight:550;white-space:nowrap}
+  .btn:hover{border-color:#3b424d}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+  .btn.danger{background:#3a1518;border-color:#5c2228;color:#ffb3b3}
+  .btn.danger:hover{background:#4a1a1f}
+  .btn:disabled{opacity:.6;cursor:default}
+  .logo{width:28px;height:28px;flex:none}
+
+  /* ---------- log in / sign up ---------- */
+  #auth{
+    position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:24px; overflow:auto;
+    background:radial-gradient(1100px 560px at 50% -12%, #13233a 0%, var(--bg) 62%);
+  }
+  .card{
+    width:min(372px,100%); display:flex; flex-direction:column; gap:12px; padding:28px;
+    border:1px solid var(--line); border-radius:16px; background:rgba(17,19,23,.94);
+    box-shadow:0 24px 70px rgba(0,0,0,.45);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:20px;letter-spacing:-.01em}
+  .card .sub{margin:-4px 0 4px;color:var(--muted)}
+  .field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+  .field input{
+    height:42px; padding:0 12px; border-radius:9px; border:1px solid var(--line2);
+    background:var(--bg); color:var(--fg); font-size:16px; outline:none;
+  }
+  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(90,162,255,.18)}
+  .field input[readonly]{color:var(--muted)}
+  .err{min-height:18px;margin:0;color:var(--bad);font-size:13px}
+  .note-box{margin:0;padding:10px 12px;border-radius:9px;background:var(--sel);color:#cfe2ff;font-size:13px}
+  .alt{margin:0;text-align:center;font-size:13px}
+  .link{color:var(--accent2);background:none;border:0;padding:0;cursor:pointer;font-size:13px;text-decoration:none}
+  .link:hover{text-decoration:underline}
+  .fine{margin:0;color:var(--faint);font-size:12px;line-height:1.5}
+
+  /* ---------- shell ---------- */
+  #app{display:flex;height:100%}
+  #side{
+    width:var(--side-w); flex:none; display:flex; flex-direction:column; min-height:0;
+    background:var(--side); border-right:1px solid var(--line);
+  }
+  .side-top{display:flex;align-items:center;gap:2px;height:var(--top-h);padding:0 8px 0 14px;border-bottom:1px solid var(--line)}
+  .side-top .brand{flex:1;font-size:15px;gap:9px;cursor:pointer;user-select:none}
+  .side-top .logo{width:22px;height:22px}
+  #tree{flex:1;overflow:auto;padding:6px 6px 16px}
+  #tree.drop-root{background:rgba(90,162,255,.06)}
+  .item{
+    position:relative; display:flex; align-items:center; gap:7px; height:32px;
+    padding:0 4px 0 calc(8px + var(--d,0) * 16px); border-radius:7px; cursor:pointer; user-select:none;
+  }
+  .item:hover{background:var(--hover)}
+  .item.on{background:var(--sel)}
+  .item.cwd{box-shadow:inset 2px 0 0 var(--accent)}
+  .item.drop{background:var(--sel);box-shadow:inset 0 0 0 1px var(--accent)}
+  .item .ic{width:16px;height:16px;color:var(--muted)}
+  .item.on .ic{color:var(--accent2)}
+  .item .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item.note .name.untitled{color:var(--muted)}
+  .item time,.item .count{flex:none;color:var(--faint);font-size:11px}
+  .item .more{width:24px;height:24px;opacity:0}
+  .item .more .ic{width:15px;height:15px}
+  .item:hover .more,.item.on .more{opacity:1}
+  .item:hover time,.item.on time{display:none}
+  .caret{display:grid;place-items:center;width:16px;height:16px;margin-left:-4px;padding:0;border:0;background:none;color:var(--faint);cursor:pointer}
+  .caret .ic{width:12px;height:12px;transition:transform .12s}
+  .caret.open .ic{transform:rotate(90deg)}
+  .item input.rename{
+    flex:1; min-width:0; height:24px; padding:0 6px; border-radius:5px; border:1px solid var(--accent);
+    background:var(--bg); color:var(--fg); outline:none;
+  }
+  .tree-empty{padding:14px 10px;color:var(--faint);font-size:13px}
+  .side-foot{display:flex;align-items:center;gap:6px;padding:8px 8px 10px 14px;border-top:1px solid var(--line)}
+  .who{flex:1;min-width:0;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+  .who b{font-weight:550;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .avatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#1d2b40;color:var(--accent2);font-weight:700;font-size:12px;flex:none;text-transform:uppercase}
+  .badge{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;display:inline-grid;place-items:center}
+  #scrim{display:none}
+
+  #main{flex:1;min-width:0;display:flex;flex-direction:column}
+  #top{display:flex;align-items:center;gap:6px;height:var(--top-h);padding:0 10px;border-bottom:1px solid var(--line)}
+  #title{
+    flex:1; min-width:0; height:34px; padding:0 8px; border:1px solid transparent; border-radius:8px;
+    background:transparent; color:var(--fg); font-size:16px; font-weight:600; outline:none;
+  }
+  #title::placeholder{color:var(--faint)}
+  #title:hover{border-color:var(--line)}
+  #title:focus{border-color:var(--line2);background:var(--panel)}
+  .spacer{flex:1}
+  .status{display:flex;align-items:center;gap:6px;color:var(--faint);font-size:12px;white-space:nowrap;padding:0 4px}
+  .status i{width:7px;height:7px;border-radius:50%;background:transparent}
+  .status.saved i{background:var(--ok)}
+  .status.saving i,.status.unsaved i,.status.loading i{background:var(--warn)}
+  .status.offline i,.status.error i{background:var(--bad)}
+  .status.offline,.status.error{color:#ffb3b3}
+
+  /* ---------- toolbar ---------- */
+  #bar{
+    display:flex; align-items:center; gap:2px; padding:6px 8px; flex:none;
+    border-bottom:1px solid var(--line); background:#0d0f13; overflow-x:auto; scrollbar-width:none; user-select:none;
+  }
+  #bar::-webkit-scrollbar{display:none}
+  .grp{display:flex;align-items:center;gap:2px;padding:0 6px;border-right:1px solid var(--line);flex:none}
+  .grp:first-child{padding-left:0}
+  .grp:last-child{border-right:0}
+  .t{
+    display:inline-grid; place-items:center; height:30px; min-width:30px; padding:0 7px;
+    border:1px solid transparent; border-radius:7px; background:transparent; color:var(--fg); cursor:pointer; font-size:13px;
+  }
+  .t .ic{width:17px;height:17px}
+  .t:hover{background:var(--hover);border-color:var(--line)}
+  .t.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  select.t{appearance:none;-webkit-appearance:none;padding:0 9px;background:var(--panel);border-color:var(--line)}
+  .swatch{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:7px;cursor:pointer}
+  .swatch:hover{background:var(--hover)}
+  .swatch span{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.16)}
+  .swatch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+
+  /* ---------- board ---------- */
+  #root{flex:1;min-height:0;display:flex}
+  .split{display:flex;flex:1;min-width:0;min-height:0}
+  .split.row{flex-direction:row}
+  .split.col{flex-direction:column}
+  .pane{
+    flex:1; min-width:0; min-height:0; position:relative; overflow:hidden;
+    display:flex; flex-direction:column; background:var(--panel);
+  }
+  .pane.active{outline:2px solid var(--accent);outline-offset:-2px;z-index:1}
+  /* size container: pictures size themselves against the pane, never the other way round */
+  .pane .content{flex:1;min-height:0;position:relative;overflow:hidden;container-type:size}
+  .pane .text{
+    position:absolute; inset:0; padding:14px; outline:none; overflow:auto;
+    line-height:1.55; font-size:16px; caret-color:var(--accent); overflow-wrap:anywhere;
+  }
+  .pane .text ul,.pane .text ol{padding-left:1.4em}
+  .pane .text img{
+    max-width:100%; max-height:calc(100cqh - 28px); width:auto; height:auto;
+    vertical-align:bottom; border-radius:4px; cursor:grab;
+  }
+  /* pictures added here carry their ratio (--ar = w/h) and fill the pane as far as that ratio allows */
+  .pane .text img[style*="--ar"]{
+    width:min(calc(100cqw - 28px), calc((100cqh - 28px) * var(--ar)), 100%);
+    max-width:none; max-height:none;
+  }
+  .pane .text img[data-pic]:not([src]){aspect-ratio:var(--ar,1.5);background:var(--raise)}
+  .pane canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none}
+  .pane.draw canvas{display:block;cursor:crosshair}
+  .pane.draw .text{pointer-events:none}
+  .pane.dropping .text{pointer-events:auto}
+  .pane.dropping canvas{pointer-events:none}
+  .pane.dragging{opacity:.4}
+  .pane.dragover{outline:2px dashed var(--accent);outline-offset:-2px}
+
+  .pane .mini{position:absolute;top:6px;right:6px;z-index:5;display:flex;gap:3px;opacity:0;transition:opacity .15s}
+  .pane:hover .mini,.pane.active .mini{opacity:1}
+  .mini button{
+    display:grid; place-items:center; width:26px; height:26px; padding:0; cursor:pointer;
+    background:rgba(9,11,14,.74); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    color:var(--fg); border:1px solid var(--line2); border-radius:7px;
+  }
+  .mini button .ic{width:14px;height:14px}
+  .mini button:hover{border-color:#4a5360;background:#000}
+  .mini .mv{cursor:grab}
+  .mini .mv:active{cursor:grabbing}
+
+  .gutter{position:relative;z-index:3;flex:0 0 5px;background:var(--line);touch-action:none}
+  .gutter::after{content:"";position:absolute;inset:-3px}
+  .gutter:hover,.gutter.on{background:var(--accent)}
+  .split.row>.gutter{cursor:col-resize}
+  .split.col>.gutter{cursor:row-resize}
+
+  #dropCaret{position:fixed;z-index:40;width:2px;background:var(--accent);border-radius:1px;pointer-events:none;box-shadow:0 0 6px rgba(90,162,255,.8)}
+
+  #empty{flex:1;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+  #empty h2{margin:12px 0 4px;color:var(--fg);font-size:18px;font-weight:600}
+  #empty p{margin:0 0 16px}
+  #empty .logo{width:44px;height:44px;opacity:.9}
+  #empty .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+  /* ---------- menus, dialogs, toast ---------- */
+  .menu{
+    position:fixed; z-index:60; min-width:200px; padding:5px; border:1px solid var(--line2); border-radius:11px;
+    background:#15181d; box-shadow:0 14px 44px rgba(0,0,0,.5);
+  }
+  .menu button{
+    display:flex; align-items:center; gap:10px; width:100%; height:33px; padding:0 10px;
+    border:0; border-radius:7px; background:none; text-align:left; cursor:pointer; font-size:13px;
+  }
+  .menu button:hover{background:var(--hover)}
+  .menu button .ic{width:16px;height:16px;color:var(--muted)}
+  .menu button.danger,.menu button.danger .ic{color:var(--bad)}
+  .menu hr{border:0;border-top:1px solid var(--line);margin:5px 3px}
+  .modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.55)}
+  .dialog{
+    width:min(430px,100%); max-height:86vh; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:22px;
+    border:1px solid var(--line2); border-radius:15px; background:#14171c; box-shadow:0 26px 76px rgba(0,0,0,.55);
+  }
+  .dialog h3{margin:0;font-size:17px;font-weight:600}
+  .dialog p{margin:0;color:var(--muted)}
+  .dialog .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .dialog .err{margin-top:-4px}
+  .picker{max-height:300px;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:10px}
+  .picker .item.sel{background:var(--sel);box-shadow:inset 0 0 0 1px var(--accent)}
+  #toast{
+    position:fixed; left:50%; bottom:22px; z-index:80; max-width:min(560px,calc(100% - 32px));
+    padding:10px 14px; border:1px solid var(--line2); border-radius:10px; background:#1a1e24; color:var(--fg);
+    box-shadow:0 14px 44px rgba(0,0,0,.45); opacity:0; pointer-events:none;
+    transform:translate(-50%,16px); transition:opacity .2s, transform .2s;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- small screens: the list becomes a drawer ---------- */
+  @media (max-width:760px){
+    #side{position:fixed;left:0;top:0;bottom:0;z-index:30;width:min(86vw,320px);transform:translateX(-102%);transition:transform .2s ease;box-shadow:0 0 44px rgba(0,0,0,.55)}
+    body.side-open #side{transform:none}
+    #scrim{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.45)}
+    body.side-open #scrim{display:block}
+    .item{height:40px}
+    .item .more{opacity:1}
+    .item time{display:none}
+    .item input.rename{font-size:16px}
+    .status b{display:none}
+    #title{font-size:16px}
+  }
+  @media (min-width:761px){
+    body.side-closed #side{display:none}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="8" fill="#15243a" stroke="#5aa2ff" stroke-width="1.8"/><path d="M15 7v18M15 16h10" fill="none" stroke="#5aa2ff" stroke-width="1.8" stroke-linecap="round"/><path d="M7.5 10.5h4M7.5 14h4M7.5 17.5h3" fill="none" stroke="#9cc6ff" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M7 3.5h6.5L19 9v10.5a1 1 0 0 1-1 1H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5V9H19"/></symbol>
+  <symbol id="i-note-plus" viewBox="0 0 24 24"><path d="M7 3.5h6.5L19 9v10.5a1 1 0 0 1-1 1H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5V9H19M12.25 12v6M9.25 15h6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.2l2 2H19A1.5 1.5 0 0 1 20.5 9v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3.5 18V7A1.5 1.5 0 0 1 5 5.5h4.2l2 2H18A1.5 1.5 0 0 1 19.5 9v1.5"/><path d="M3.5 18l2.4-6.4a1.5 1.5 0 0 1 1.4-1h13.2a1 1 0 0 1 .94 1.35L19.2 18.5a1.5 1.5 0 0 1-1.4 1H5A1.5 1.5 0 0 1 3.5 18z"/></symbol>
+  <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.2l2 2H19A1.5 1.5 0 0 1 20.5 9v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M12 10.5v6M9 13.5h6"/></symbol>
+  <symbol id="i-move-to" viewBox="0 0 24 24"><path d="M3.5 18V7A1.5 1.5 0 0 1 5 5.5h4.2l2 2H19A1.5 1.5 0 0 1 20.5 9v9a1.5 1.5 0 0 1-1.5 1.5H5"/><path d="M8.5 13.5h7.5M13.5 11l2.5 2.5-2.5 2.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-split-v" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M12 4.5v15"/></symbol>
+  <symbol id="i-split-h" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 12h17"/></symbol>
+  <symbol id="i-pane-x" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.8 11.2A2 2 0 0 0 9.3 20h5.4a2 2 0 0 0 2-1.8L17.5 7M9.5 7V4.5h5V7"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M9 19.5h11M5.6 15.6l8.5-8.5a2 2 0 0 1 2.8 0l2 2a2 2 0 0 1 0 2.8l-7.3 7.3a1 1 0 0 1-.7.3H9.2a1 1 0 0 1-.7-.3l-2.9-2.9a1 1 0 0 1 0-1.4z"/><path d="M10 11l5 5"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-2.5 2.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></symbol>
+  <symbol id="i-ul" viewBox="0 0 24 24"><path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10"/><circle cx="5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-ol" viewBox="0 0 24 24"><path d="M10 6.5h10M10 12h10M10 17.5h10M4.3 5.2l1.4-.7v4.1M4 12c.4-.8 2.3-.9 2.3.3 0 1-2.3 1.8-2.3 2.7h2.5"/></symbol>
+  <symbol id="i-al" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
+  <symbol id="i-ac" viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></symbol>
+  <symbol id="i-ar" viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></symbol>
+  <symbol id="i-clear" viewBox="0 0 24 24"><path d="M6 5h12M12 5l-3.5 14M14.5 13.5l5 5M19.5 13.5l-5 5"/></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24"><path d="M18.5 3.5l2 2-8.3 8.3-2-2z"/><path d="M10.2 11.8c-2.2-.4-4.2 1-4.4 3.2-.2 1.7-.9 2.7-2.3 3.5 3.6 1.4 7.8.4 8.6-3.3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 15.5l-5-5-9 9"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19.5h14"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.8"/><path d="M10.8 12.7L20 3.5M16.5 7l2.5 2.5M14 9.5l2 2"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.5 4.5h3a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-3M10 16.5l4.5-4.5L10 7.5M14.5 12H4"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h8M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3.5 13.5l2.6-7.2a1.5 1.5 0 0 1 1.4-1h9a1.5 1.5 0 0 1 1.4 1l2.6 7.2V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><path d="M3.5 13.5h4.5l1.5 2.5h5l1.5-2.5h4.5"/></symbol>
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/></symbol>
+</svg>
+
+<!-- ======================= log in / sign up / unlock ======================= -->
+<div id="auth" hidden>
+  <form id="authForm" class="card" novalidate>
+    <div class="brand"><svg class="logo"><use href="#i-logo"/></svg> mypager</div>
+    <p class="sub" id="authSub">Log in to your notes.</p>
+    <p class="note-box" id="authNote" hidden></p>
+    <label class="field"><span>ID</span>
+      <input id="aId" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
+    </label>
+    <label class="field"><span>Password</span>
+      <input id="aPw" name="password" type="password" autocomplete="current-password">
+    </label>
+    <label class="field" id="fPw2" hidden><span>Password again</span>
+      <input id="aPw2" type="password" autocomplete="new-password">
+    </label>
+    <label class="field" id="fInv" hidden><span>Invite code</span>
+      <input id="aInv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+    </label>
+    <p class="err" id="authErr" role="alert"></p>
+    <button class="btn primary" id="authGo" type="submit">Log in</button>
+    <p class="alt"><button type="button" class="link" id="authSwap">Create an account</button></p>
+    <p class="fine" id="authFine" hidden>Your password encrypts your notes on this device before anything is sent, so the server only ever holds scrambled bytes. There is no reset: forget it and nobody can read them, not even the server.</p>
+  </form>
+</div>
+
+<!-- ======================= app ======================= -->
+<div id="app" hidden>
+  <aside id="side">
+    <div class="side-top">
+      <div class="brand" id="home" title="Top level"><svg class="logo"><use href="#i-logo"/></svg> mypager</div>
+      <button class="ib" id="newNote" title="New note"><svg class="ic"><use href="#i-note-plus"/></svg></button>
+      <button class="ib" id="newFolder" title="New folder"><svg class="ic"><use href="#i-folder-plus"/></svg></button>
+    </div>
+    <nav id="tree" aria-label="Folders and notes"></nav>
+    <div class="side-foot">
+      <div class="who"><span class="avatar" id="avatar"></span><b id="who"></b><span class="badge" id="impBadge" hidden title="Imports waiting"></span></div>
+      <button class="ib" id="acct" title="Account" data-anchor><svg class="ic"><use href="#i-more"/></svg></button>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <main id="main">
+    <header id="top">
+      <button class="ib" id="sideBtn" title="Show or hide the list"><svg class="ic"><use href="#i-sidebar"/></svg></button>
+      <input id="title" placeholder="Untitled" maxlength="200" spellcheck="false" autocomplete="off" hidden>
+      <div class="spacer" id="topSpacer"></div>
+      <span id="status" class="status"><i></i><b></b></span>
+      <button class="ib" id="noteMenu" title="Note actions" data-anchor hidden><svg class="ic"><use href="#i-more"/></svg></button>
+    </header>
+
+    <div id="bar" hidden>
+      <div class="grp">
+        <button class="t" id="splitV" title="Split left / right"><svg class="ic"><use href="#i-split-v"/></svg></button>
+        <button class="t" id="splitH" title="Split top / bottom"><svg class="ic"><use href="#i-split-h"/></svg></button>
+        <button class="t" id="del" title="Remove this pane"><svg class="ic"><use href="#i-pane-x"/></svg></button>
+      </div>
+      <div class="grp" id="textTools">
+        <button class="t" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button class="t" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button class="t" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button class="t" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <select class="t" id="font" title="Font">
+          <option value="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">Sans</option>
+          <option value="Georgia,'Times New Roman',serif">Serif</option>
+          <option value="ui-monospace,Menlo,Consolas,monospace">Mono</option>
+        </select>
+        <select class="t" id="size" title="Text size">
+          <option value="2">S</option>
+          <option value="3" selected>M</option>
+          <option value="5">L</option>
+          <option value="6">XL</option>
+          <option value="7">XXL</option>
+        </select>
+        <label class="swatch" title="Text colour"><span id="fgDot" style="background:#e6e8ec"></span><input type="color" id="fg" value="#e6e8ec"></label>
+        <button class="t" data-cmd="insertUnorderedList" title="Bullet list"><svg class="ic"><use href="#i-ul"/></svg></button>
+        <button class="t" data-cmd="insertOrderedList" title="Numbered list"><svg class="ic"><use href="#i-ol"/></svg></button>
+        <button class="t" data-cmd="justifyLeft" title="Align left"><svg class="ic"><use href="#i-al"/></svg></button>
+        <button class="t" data-cmd="justifyCenter" title="Centre"><svg class="ic"><use href="#i-ac"/></svg></button>
+        <button class="t" data-cmd="justifyRight" title="Align right"><svg class="ic"><use href="#i-ar"/></svg></button>
+        <button class="t" data-cmd="removeFormat" title="Clear formatting"><svg class="ic"><use href="#i-clear"/></svg></button>
+        <button class="t" id="painter" title="Format painter: select the source text, click, then select the target"><svg class="ic"><use href="#i-brush"/></svg></button>
+        <button class="t" id="pic" title="Insert picture at the cursor (or drop / paste one into a pane)"><svg class="ic"><use href="#i-image"/></svg></button>
+      </div>
+      <div class="grp" id="drawTools">
+        <label class="swatch" title="Pen colour"><span id="penDot" style="background:#5aa2ff"></span><input type="color" id="pen" value="#5aa2ff"></label>
+        <select class="t" id="penSize" title="Brush size">
+          <option value="2">Fine</option>
+          <option value="4" selected>Pen</option>
+          <option value="8">Marker</option>
+          <option value="16">Brush</option>
+        </select>
+        <button class="t" id="erase" title="Eraser (this pane)"><svg class="ic"><use href="#i-eraser"/></svg></button>
+        <button class="t" id="clearPane" title="Clear this pane's drawing"><svg class="ic"><use href="#i-trash"/></svg></button>
+      </div>
+    </div>
+
+    <div id="root" hidden></div>
+    <div id="empty" hidden>
+      <div>
+        <svg class="logo"><use href="#i-logo"/></svg>
+        <h2>No note open</h2>
+        <p>Pick one from the list, or start a new one.</p>
+        <div class="acts">
+          <button class="btn primary" id="emptyNote">New note</button>
+          <button class="btn" id="emptyFolder">New folder</button>
+          <button class="btn" id="emptyList">Show list</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="menu" class="menu" hidden></div>
+<div id="modal" class="modal" hidden><div class="dialog" role="dialog" aria-modal="true"></div></div>
+<div id="toast" role="status"></div>
+<div id="dropCaret" hidden></div>
+<input type="file" id="picFile" accept="image/*" multiple hidden>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* ==========================================================================
+   mypager. Notes and multi-pane boards behind an ID + password.
+   Everything is encrypted here, in the browser, before it is sent: the server
+   (worker/worker.js) only ever stores ciphertext. See CLAUDE.md for the model.
+   ========================================================================== */
+const HOST = 'mypager.vaibhavpro9210.workers.dev';
+const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const LIVE = location.hostname === HOST || LOCAL;
+// Copies of this file anywhere else (the repo is also on GitHub Pages) forward to the real one.
+if (!LIVE) location.replace('https://' + HOST + '/' + location.hash);
+
+/* ---------- small helpers ---------- */
+const $ = s => document.querySelector(s);
+const te = new TextEncoder(), td = new TextDecoder();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+const icon = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const elOf = n => n && (n.nodeType === 1 ? n : n.parentElement);
+const IDRE = /^[A-Za-z0-9_-]{16,32}$/;
+function b64u(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function unb64u(s) {
+  const bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/'));
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+const unb64 = s => unb64u(String(s).replace(/\s+/g, '').replace(/=+$/, ''));
+const rand = n => crypto.getRandomValues(new Uint8Array(n));
+const newId = () => b64u(rand(12));
+function cat(...parts) {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+function loadImage(src) {
+  return new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('image')); im.src = src; });
+}
+function dataURLToBlob(s) {
+  const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(s);
+  if (!m) return null;
+  return new Blob([m[2] ? unb64(m[3]) : te.encode(decodeURIComponent(m[3]))], {type: m[1]});
+}
+function blobToDataURL(b) {
+  return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsDataURL(b); });
+}
+function ago(t) {
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return 'now';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  if (s < 86400) return Math.floor(s / 3600) + 'h';
+  if (s < 7 * 86400) return Math.floor(s / 86400) + 'd';
+  return new Date(t).toLocaleDateString([], {day: 'numeric', month: 'short'});
+}
+function readLS(k, fallback) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fallback : v; } catch (e) { return fallback; } }
+function download(name, data, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], {type}));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+/* ---------- state ---------- */
+const S = {
+  user: null, wrapped: null, dek: null, ready: false,
+  pw: null,                       // the password, held only while just-logged-in imports try it
+  folders: new Map(), notes: new Map(),
+  labels: new Map(),              // ciphertext -> decrypted title / folder name
+  open: null,                     // {id, rev, dirty, saving, gen, json, again, fails}
+  cwd: null,                      // folder new notes go into (null = top level)
+  collapsed: new Set(readLS('mp.collapsed', [])),
+};
+
+/* ---------- status, toast, menus, dialogs ---------- */
+const STATUS = {saved: 'Saved', saving: 'Saving…', unsaved: 'Edited', loading: 'Opening…', offline: 'Offline, retrying', error: 'Not saved'};
+function setStatus(k) {
+  const el = $('#status');
+  el.className = 'status ' + (k || '');
+  el.querySelector('b').textContent = STATUS[k] || '';
+  el.title = k === 'offline' ? "Can't reach the server. Your changes are kept here and saved when it's back." : '';
+}
+let toastT = null;
+function toast(msg, ms = 4500) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function popMenu(anchor, items) {
+  const m = $('#menu');
+  m.innerHTML = items.map((it, i) => it === '-' ? '<hr>'
+    : `<button type="button" data-i="${i}" class="${it.danger ? 'danger' : ''}">${icon(it.icon)}<span>${esc(it.label)}</span></button>`).join('');
+  m.hidden = false;
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  let y = r.bottom + 4;
+  if (y + mh > innerHeight - 8) y = Math.max(8, r.top - mh - 4);
+  m.style.left = Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8)) + 'px';
+  m.style.top = y + 'px';
+  m.onclick = e => { const b = e.target.closest('button'); if (!b) return; m.hidden = true; items[b.dataset.i].run(); };
+}
+document.addEventListener('pointerdown', e => {
+  if (!$('#menu').hidden && !e.target.closest('#menu')) $('#menu').hidden = true;
+}, true);
+
+function modal(html, wire) {
+  return new Promise(resolve => {
+    const m = $('#modal'), d = m.querySelector('.dialog');
+    d.innerHTML = html;
+    m.hidden = false;
+    let done = false;
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); close(undefined); } };
+    function close(v) {
+      if (done) return;
+      done = true; m.hidden = true; d.innerHTML = '';
+      document.removeEventListener('keydown', onKey, true);
+      resolve(v);
+    }
+    document.addEventListener('keydown', onKey, true);
+    m.onpointerdown = e => { if (e.target === m) close(undefined); };
+    wire(d, close);
+    const f = d.querySelector('[autofocus]') || d.querySelector('input') || d.querySelector('.btn.primary,.btn.danger');
+    if (f) f.focus();
+  });
+}
+function confirmBox(title, text, ok, danger = true) {
+  return modal(`<h3>${esc(title)}</h3><p>${esc(text)}</p>
+    <div class="acts"><button class="btn" data-v="0">Cancel</button><button class="btn ${danger ? 'danger' : 'primary'}" data-v="1">${esc(ok)}</button></div>`,
+  (d, close) => d.querySelectorAll('[data-v]').forEach(b => b.onclick = () => close(b.dataset.v === '1')));
+}
+// A small form in a dialog. submit(values) returns an error message, or nothing to close.
+function formDialog({title, text, fields, ok, extra}) {
+  return modal(`<h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      ${fields.map(f => `<label class="field"><span>${esc(f.label)}</span><input name="${f.name}" type="${f.type || 'text'}"
+        ${f.auto ? `autocomplete="${f.auto}"` : ''} ${f.numeric ? 'inputmode="numeric"' : ''} value="${esc(f.value || '')}" maxlength="${f.max || 200}"></label>`).join('')}
+      <p class="err"></p>
+      <div class="acts">${extra ? `<button type="button" class="link" data-x style="margin-right:auto">${esc(extra.label)}</button>` : ''}
+        <button type="button" class="btn" data-cancel>${esc(fields.cancel || 'Cancel')}</button>
+        <button type="submit" class="btn primary">${esc(ok.label)}</button></div>
+    </form>`, (d, close) => {
+    const form = d.querySelector('form'), err = d.querySelector('.err'), go = d.querySelector('[type=submit]');
+    d.querySelector('[data-cancel]').onclick = () => close(undefined);
+    if (extra) d.querySelector('[data-x]').onclick = () => close(extra.value);
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const v = Object.fromEntries(fields.map(f => [f.name, form.elements[f.name].value]));
+      go.disabled = true; err.textContent = '';
+      try { const msg = await ok.run(v); if (msg) err.textContent = msg; else close(v); }
+      catch (x) { err.textContent = x.message || 'Something went wrong.'; }
+      finally { go.disabled = false; }
+    };
+  });
+}
+
+/* ---------- server ---------- */
+class ApiError extends Error { constructor(status, message, data) { super(message); this.status = status; this.data = data || {}; } }
+let relogin = null;   // while the session is being renewed, failed calls wait here and retry
+async function api(method, path, opt = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const headers = {...(opt.headers || {})};
+    let body = opt.body;
+    if (opt.json !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(opt.json); }
+    else if (body !== undefined) headers['Content-Type'] = 'application/octet-stream';
+    let r;
+    try { r = await fetch('/api/' + path, {method, headers, body, credentials: 'same-origin', cache: opt.cache || 'no-store'}); }
+    catch (e) { throw new ApiError(0, "Can't reach mypager. Check your connection."); }
+    if (r.status === 401 && S.ready && !opt.noRelogin && attempt === 0) { await needLogin(); continue; }
+    if (!r.ok) {
+      let d = {};
+      try { d = await r.json(); } catch (e) { /* not json */ }
+      throw new ApiError(r.status, d.error || 'Something went wrong (' + r.status + ').', d);
+    }
+    return r;
+  }
+}
+const apiJSON = async (method, path, opt) => (await api(method, path, opt)).json();
+
+/* ---------- crypto ----------
+   password --PBKDF2 600k--> 32 bytes --HKDF--> auth (sent at login) + KEK (never leaves).
+   The KEK unwraps the account's random data key (DEK); the DEK encrypts everything.
+   Changing the password only re-wraps the DEK. */
+const ITER = 600000;
+async function deriveKeys(id, pw) {
+  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: te.encode('mypager/v3/' + id), iterations: ITER}, base, 256);
+  const hk = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveBits', 'deriveKey']);
+  const hkdf = info => ({name: 'HKDF', hash: 'SHA-256', salt: te.encode('mypager'), info: te.encode(info)});
+  return {
+    auth: b64u(new Uint8Array(await crypto.subtle.deriveBits(hkdf('auth'), hk, 256))),
+    kek: await crypto.subtle.deriveKey(hkdf('wrap'), hk, {name: 'AES-GCM', length: 256}, false, ['wrapKey', 'unwrapKey']),
+  };
+}
+async function wrapDek(dek, kek) {
+  const iv = rand(12);
+  return b64u(cat(iv, new Uint8Array(await crypto.subtle.wrapKey('raw', dek, kek, {name: 'AES-GCM', iv}))));
+}
+function unwrapDek(wrapped, kek, extractable = false) {
+  const b = unb64u(wrapped);
+  return crypto.subtle.unwrapKey('raw', b.subarray(12), kek, {name: 'AES-GCM', iv: b.subarray(0, 12)}, {name: 'AES-GCM'}, extractable, ['encrypt', 'decrypt']);
+}
+// aad binds each ciphertext to what it is ("note:<id>"), so the server can't swap them.
+async function seal(bytes, aad) {
+  const iv = rand(12);
+  return cat(iv, new Uint8Array(await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: te.encode(aad)}, S.dek, bytes)));
+}
+async function unseal(u8, aad) {
+  return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u8.subarray(0, 12), additionalData: te.encode(aad)}, S.dek, u8.subarray(12)));
+}
+const sealText = async (s, aad) => b64u(await seal(te.encode(s), aad));
+const unsealText = async (s, aad) => td.decode(await unseal(unb64u(s), aad));
+
+/* The DEK is kept per device in IndexedDB as a non-extractable CryptoKey: scripts can use it
+   but not read it out. Logging out deletes it. */
+function idb() {
+  return new Promise((ok, no) => {
+    const r = indexedDB.open('mypager', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => no(r.error);
+  });
+}
+async function kv(mode, fn) {
+  const db = await idb();
+  return new Promise((ok, no) => {
+    const tx = db.transaction('kv', mode), req = fn(tx.objectStore('kv'));
+    tx.oncomplete = () => { db.close(); ok(req && req.result); };
+    tx.onerror = tx.onabort = () => { db.close(); no(tx.error); };
+  });
+}
+const keySave = (id, dek) => kv('readwrite', st => st.put({id, dek}, 'key')).catch(() => {});
+const keyLoad = () => kv('readonly', st => st.get('key')).catch(() => null);
+const keyDrop = () => kv('readwrite', st => st.delete('key')).catch(() => {});
+
+/* ---------- note HTML hygiene ----------
+   Applied to anything loaded into a pane and to pasted content: no scripts or frames, no
+   event handlers, no ids or names (they would clobber the app's own lookups). */
+const DROP_TAGS = 'script,style,iframe,frame,frameset,object,embed,link,meta,base,form,input,button,select,textarea,noscript,template,svg,math,canvas,video,audio,source,track';
+function scrub(scope) {
+  scope.querySelectorAll(DROP_TAGS).forEach(n => n.remove());
+  scope.querySelectorAll('*').forEach(n => {
+    for (const a of [...n.attributes]) {
+      const name = a.name.toLowerCase(), v = a.value.replace(/[\u0000- ]+/g, '').toLowerCase();
+      if (name.startsWith('on') || name === 'id' || name === 'name' || name === 'srcset' || name === 'srcdoc'
+        || name === 'contenteditable' || name === 'formaction' || name.includes(':')) { n.removeAttribute(a.name); continue; }
+      if (['href', 'src', 'background', 'action', 'poster'].includes(name) && v && !/^(https?:|mailto:|tel:|data:image\/|blob:|#)/.test(v))
+        n.removeAttribute(a.name);
+    }
+    if (n.tagName === 'A' && n.hasAttribute('href')) { n.target = '_blank'; n.rel = 'noopener noreferrer'; }
+  });
+}
+function clean(html) {
+  const t = document.createElement('template');
+  t.innerHTML = String(html || '');
+  scrub(t.content);
+  return t.innerHTML;
+}
+// What gets stored for a pane's text: picture elements keep only their id (data-pic);
+// their blob: URLs belong to this page load.
+function storedHTML(el) {
+  const c = el.cloneNode(true);
+  c.querySelectorAll('img').forEach(img => {
+    if (img.dataset.pic) img.removeAttribute('src');
+    else if (/^blob:/.test(img.getAttribute('src') || '')) img.remove();
+    img.removeAttribute('title');
+  });
+  return c.innerHTML;
+}
+
+/* ==========================================================================
+   pictures
+   Every picture (and every pane drawing) is its own encrypted blob on the server,
+   referenced from note HTML as <img data-pic="id" style="--ar:w/h">. A note therefore
+   stays small, and typing in a note full of photos doesn't re-upload the photos.
+   ========================================================================== */
+const PIC_MAX = 2000;                 // longest side kept, in px
+const picURLs = new Map();            // id -> Promise<blob: URL>
+const picQueue = new Map();           // id -> {blob, p}: made here, not yet on the server
+
+function uploadPic(id) {
+  const q = picQueue.get(id);
+  if (!q) return Promise.resolve();
+  if (!q.p) q.p = (async () => {
+    const mime = te.encode((q.blob.type || 'image/png').slice(0, 60));
+    const body = await seal(cat(new Uint8Array([mime.length]), mime, new Uint8Array(await q.blob.arrayBuffer())), 'pic:' + id);
+    await api('PUT', 'pics/' + id, {body});
+    picQueue.delete(id);
+  })().catch(e => { q.p = null; throw e; });
+  return q.p;
+}
+function picURL(id) {
+  if (!picURLs.has(id)) picURLs.set(id, (async () => {
+    const r = await api('GET', 'pics/' + id, {cache: 'default'});
+    const u = await unseal(new Uint8Array(await r.arrayBuffer()), 'pic:' + id);
+    const type = td.decode(u.subarray(1, 1 + u[0]));
+    return URL.createObjectURL(new Blob([u.subarray(1 + u[0])], {type: /^image\/[a-z0-9.+-]+$/.test(type) ? type : 'image/png'}));
+  })().catch(e => { picURLs.delete(id); throw e; }));
+  return picURLs.get(id);
+}
+async function picDataURL(id) { return blobToDataURL(await (await fetch(await picURL(id))).blob()); }
+function hydratePics(scope) {
+  scope.querySelectorAll('img[data-pic]').forEach(img => {
+    if (img.getAttribute('src') || !IDRE.test(img.dataset.pic)) return;
+    picURL(img.dataset.pic).then(u => { img.src = u; }, () => { img.title = "This picture couldn't be loaded."; });
+  });
+}
+
+// Big photos are scaled to PIC_MAX on their long side; opaque ones become JPEG.
+function isOpaque(ctx, w, h) {
+  const d = ctx.getImageData(0, 0, w, h).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 255) return false;
+  return true;
+}
+async function shrinkImage(blob) {
+  const type = blob.type || 'image/png', src = URL.createObjectURL(blob);
+  try {
+    const im = await loadImage(src);
+    let w = im.naturalWidth || 300, h = im.naturalHeight || 150;
+    const keep = (type === 'image/gif' && blob.size <= 3e6) || (type === 'image/svg+xml' && blob.size <= 1e6)
+      || (Math.max(w, h) <= PIC_MAX && blob.size <= 1.5e6 && /^image\/(png|jpeg|webp)$/.test(type));
+    if (keep) return {blob, w, h};
+    const k = Math.min(1, PIC_MAX / Math.max(w, h));
+    w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(im, 0, 0, w, h);
+    const jpeg = type === 'image/jpeg' || isOpaque(ctx, w, h);
+    const out = await new Promise(r => cv.toBlob(r, jpeg ? 'image/jpeg' : 'image/png', 0.86));
+    if (!out) throw new Error('encode');
+    return {blob: out, w, h};
+  } finally { URL.revokeObjectURL(src); }
+}
+// A ready-to-insert <img> for a picture file; it uploads in the background, and saving the
+// note waits for that upload. fit = fill the pane at the picture's ratio (pictures added on
+// purpose); otherwise it keeps its own size, just never bigger than the pane.
+async function newPicture(blob, fit = true) {
+  const s = await shrinkImage(blob), id = newId();
+  picQueue.set(id, {blob: s.blob, p: null});
+  uploadPic(id).catch(() => { /* retried when the note saves */ });
+  const url = URL.createObjectURL(s.blob);
+  picURLs.set(id, Promise.resolve(url));
+  const img = document.createElement('img');
+  img.alt = ''; img.dataset.pic = id;
+  if (fit) img.style.setProperty('--ar', (s.w / s.h).toFixed(4));
+  img.src = url;
+  return img;
+}
+// Pasted or imported HTML can carry pictures inline as data: URLs; turn those into blobs,
+// keeping the size they had.
+async function adoptDataImages(scope) {
+  for (const img of [...scope.querySelectorAll('img[src^="data:image/"]')]) {
+    try {
+      const pic = await newPicture(dataURLToBlob(img.getAttribute('src')), false);
+      for (const k of ['width', 'height', 'style']) if (img.hasAttribute(k)) pic.setAttribute(k, img.getAttribute(k));
+      img.replaceWith(pic);
+    } catch (e) { img.remove(); }
+  }
+}
+
+/* --- where a dropped picture lands: the text caret under the pointer --- */
+let dragImg = null;   // a picture already in a pane, being dragged somewhere else
+function caretAt(p, x, y) {
+  const t = p.querySelector('.text');
+  let r = null;
+  if (document.caretPositionFromPoint) {
+    const c = document.caretPositionFromPoint(x, y);
+    if (c && c.offsetNode) { r = document.createRange(); r.setStart(c.offsetNode, c.offset); }
+  } else if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(x, y);
+  if (!r || !t.contains(r.startContainer) || (dragImg && dragImg.contains(r.startContainer))) {
+    r = document.createRange(); r.selectNodeContents(t);   // below the text: append
+    r.collapse(false);
+  }
+  r.collapse(true);
+  return r;
+}
+function showDropCaret(r) {
+  let rect = r.getClientRects()[0];
+  if (!rect || (!rect.height && !rect.width && !rect.top)) {
+    const s = document.createElement('span');
+    s.textContent = '​';
+    r.insertNode(s);
+    rect = s.getBoundingClientRect();
+    const parent = s.parentNode;
+    s.remove();
+    if (parent) parent.normalize();
+  }
+  const c = $('#dropCaret');
+  c.hidden = false;
+  c.style.left = Math.round(rect.left - 1) + 'px';
+  c.style.top = Math.round(rect.top) + 'px';
+  c.style.height = Math.max(18, Math.round(rect.height)) + 'px';
+}
+function endDropUI() {
+  $('#dropCaret').hidden = true;
+  root.querySelectorAll('.pane.dropping,.pane.dragover').forEach(x => x.classList.remove('dropping', 'dragover'));
+}
+function placeNodes(p, range, nodes) {
+  const t = p.querySelector('.text');
+  if (!range || !t.contains(range.startContainer)) { range = document.createRange(); range.selectNodeContents(t); range.collapse(false); }
+  for (const n of nodes) { range.insertNode(n); range.setStartAfter(n); range.collapse(true); }
+  setActive(p);
+  if (!p.classList.contains('draw')) t.focus({preventScroll: true});
+  const sel = getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
+  nodes[nodes.length - 1].scrollIntoView({block: 'nearest'});
+  changed();
+}
+async function insertFiles(p, range, files) {
+  const nodes = [];
+  if (files.some(f => f.size > 2e6)) toast('Adding picture…', 2500);
+  for (const f of files.slice(0, 12)) {
+    try { nodes.push(await newPicture(f)); } catch (e) { toast("Couldn't read " + (f.name || 'that picture') + '. Try a JPEG or PNG.'); }
+  }
+  if (nodes.length) placeNodes(p, range, nodes);
+}
+function isPictureDrag(e) {
+  if (dragImg) return true;
+  const types = [...(e.dataTransfer ? e.dataTransfer.types : [])];
+  return types.includes('Files') || types.includes('text/uri-list');
+}
+async function dropOnPane(p, range, dt) {
+  if (dragImg) { const img = dragImg; dragImg = null; placeNodes(p, range, [img]); return; }
+  const files = [...dt.files].filter(f => /^image\//.test(f.type));
+  if (files.length) return insertFiles(p, range, files);
+  const html = dt.getData('text/html') || '';
+  const uri = (dt.getData('text/uri-list') || '').split(/\r?\n/).find(l => l && l[0] !== '#') || '';
+  const m = /<img[^>]+src\s*=\s*["']([^"']+)["']/i.exec(html);
+  const src = m ? m[1].replace(/&amp;/g, '&') : (/\.(png|jpe?g|gif|webp|avif|svg)([?#]|$)/i.test(uri) ? uri : '');
+  if (/^data:image\//.test(src)) { try { placeNodes(p, range, [await newPicture(dataURLToBlob(src))]); } catch (e) { /* not an image */ } return; }
+  if (/^https:\/\//.test(src)) {
+    // a picture from another site: shown from there (it can't be copied in without its server's say-so)
+    const img = document.createElement('img');
+    img.alt = '';
+    img.onload = () => { img.style.setProperty('--ar', (img.naturalWidth / img.naturalHeight).toFixed(4)); changed(); };
+    img.src = src;
+    placeNodes(p, range, [img]);
+    return;
+  }
+  if (/^https?:\/\//.test(uri)) {
+    const a = document.createElement('a');
+    a.href = uri; a.textContent = uri; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    placeNodes(p, range, [a]);
+  }
+}
+
+/* ==========================================================================
+   the board: a tree of .split row/col containers, panes and gutters
+   ========================================================================== */
+const root = $('#root');
+let active = null, dragSrc = null;
+const ro = new ResizeObserver(entries => { for (const en of entries) { const p = en.target.closest('.pane'); if (p) fitCanvas(p); } });
+
+function makePane() {
+  const p = document.createElement('div');
+  p.className = 'pane';
+  p.innerHTML = `<div class="mini">
+      <button type="button" class="mv" title="Drag to move or swap this pane" draggable="true">${icon('move')}</button>
+      <button type="button" class="md" title="Switch to drawing">${icon('pen')}</button>
+      <button type="button" class="sv" title="Split left / right">${icon('split-v')}</button>
+      <button type="button" class="sh" title="Split top / bottom">${icon('split-h')}</button>
+    </div>
+    <div class="content"><div class="text" contenteditable="true" spellcheck="false"></div><canvas></canvas></div>`;
+  const mini = p.querySelector('.mini'), mv = mini.querySelector('.mv');
+  mini.querySelector('.md').onclick = e => { e.stopPropagation(); toggleMode(p); changed(); };
+  mini.querySelector('.sv').onclick = e => { e.stopPropagation(); setActive(p); split('row'); };
+  mini.querySelector('.sh').onclick = e => { e.stopPropagation(); setActive(p); split('col'); };
+  p.addEventListener('pointerdown', () => setActive(p));
+  mv.addEventListener('dragstart', e => {
+    dragSrc = p;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', 'pane'); } catch (_) { /* old browsers */ }
+    p.classList.add('dragging');
+  });
+  mv.addEventListener('dragend', () => { dragSrc = null; root.querySelectorAll('.pane').forEach(x => x.classList.remove('dragging', 'dragover')); });
+  setupCanvas(p.querySelector('canvas'));
+  ro.observe(p.querySelector('.content'));
+  return p;
+}
+function releasePane(p) {
+  const c = p.querySelector('.content');
+  if (c) ro.unobserve(c);
+  const cv = p.querySelector('canvas');
+  if (cv) { cv.width = cv.height = 0; cv._art = null; }
+}
+function makeGutter() {
+  const g = document.createElement('div');
+  g.className = 'gutter';
+  g.addEventListener('pointerdown', startDrag);
+  return g;
+}
+function setActive(p) {
+  if (!p || active === p) return;
+  if (active) active.classList.remove('active');
+  active = p;
+  p.classList.add('active');
+  $('#erase').classList.toggle('on', p.dataset.erase === '1');
+}
+function setMode(p, draw) {
+  p.classList.toggle('draw', draw);
+  const b = p.querySelector('.mini .md');
+  b.innerHTML = icon(draw ? 'type' : 'pen');
+  b.title = draw ? 'Switch to text' : 'Switch to drawing';
+  fitCanvas(p);
+}
+function toggleMode(p) {
+  const draw = !p.classList.contains('draw');
+  setMode(p, draw);
+  setActive(p);
+  if (!draw) p.querySelector('.text').focus();
+}
+
+/* split: same direction as the parent adds an equal sibling; the other direction nests */
+function equalize(c) { [...c.children].filter(x => !x.classList.contains('gutter')).forEach(x => { x.style.flex = '1 1 0'; }); }
+function split(dir) {
+  if (!active) return;
+  const target = active, parent = target.parentNode;
+  if (parent.classList.contains('split') && parent.classList.contains(dir)) {
+    target.after(makeGutter(), makePane());
+    equalize(parent);
+  } else {
+    const c = document.createElement('div');
+    c.className = 'split ' + dir;
+    c.style.flex = target.style.flex || '1 1 0';
+    parent.replaceChild(c, target);
+    c.append(target, makeGutter(), makePane());
+    target.style.flex = '1 1 0';
+    c.lastChild.style.flex = '1 1 0';
+  }
+  changed();
+}
+function firstPane(el) { return el.classList.contains('pane') ? el : el.querySelector('.pane'); }
+function deletePane() {
+  if (!active) return;
+  const p = active, c = p.parentNode;
+  if (c === root) return toast('A note always keeps at least one pane.');
+  const kids = [...c.children], i = kids.indexOf(p);
+  if (kids[i + 1] && kids[i + 1].classList.contains('gutter')) kids[i + 1].remove();
+  else if (kids[i - 1] && kids[i - 1].classList.contains('gutter')) kids[i - 1].remove();
+  releasePane(p);
+  p.remove();
+  active = null;
+  const rest = [...c.children].filter(x => !x.classList.contains('gutter'));
+  if (rest.length === 1) {
+    const only = rest[0];
+    only.style.flex = c.style.flex || '1 1 0';
+    c.parentNode.replaceChild(only, c);
+    // a lone split that lands inside a split of its own direction merges into it
+    const up = only.parentNode;
+    if (only.classList.contains('split') && up.classList.contains('split') && up.classList.contains(only.classList.contains('row') ? 'row' : 'col')) {
+      const grow = parseFloat(only.style.flex) || 1, inner = [...only.children], total = inner.filter(x => !x.classList.contains('gutter')).reduce((n, x) => n + (parseFloat(x.style.flex) || 1), 0);
+      inner.forEach(x => { if (!x.classList.contains('gutter')) x.style.flex = (grow * (parseFloat(x.style.flex) || 1) / total).toFixed(4) + ' 1 0'; });
+      only.replaceWith(...inner);
+    }
+    setActive(firstPane(rest[0].isConnected ? rest[0] : root));
+  } else setActive(firstPane(rest[0]));
+  changed();
+}
+
+/* gutters: drag to resize the two neighbours; their combined share of the row stays put */
+let drag = null;
+function grow(el) { return parseFloat(el.style.flex) || 1; }
+function startDrag(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const g = e.currentTarget, row = g.parentNode.classList.contains('row');
+  const prev = g.previousElementSibling, next = g.nextElementSibling;
+  const pr = prev.getBoundingClientRect(), nr = next.getBoundingClientRect();
+  drag = {g, row, prev, next, start: row ? e.clientX : e.clientY, a: row ? pr.width : pr.height, b: row ? nr.width : nr.height, sum: grow(prev) + grow(next)};
+  try { g.setPointerCapture(e.pointerId); } catch (_) { /* fine */ }
+  g.classList.add('on');
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+}
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const d = (drag.row ? e.clientX : e.clientY) - drag.start, a = drag.a + d, b = drag.b - d;
+  if (a < 48 || b < 48) return;
+  drag.prev.style.flex = (drag.sum * a / (a + b)).toFixed(4) + ' 1 0';
+  drag.next.style.flex = (drag.sum * b / (a + b)).toFixed(4) + ' 1 0';
+});
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  drag.g.classList.remove('on');
+  drag = null;
+  document.body.style.userSelect = '';
+  changed();
+});
+
+/* drawing: each pane's drawing lives in an offscreen canvas (cv._art) whose size in CSS px
+   only ever grows, and the visible canvas shows its top-left corner. So a phone never crops
+   a drawing made on a big screen. A drawing is saved as a picture (cv._drawId). */
+const dprNow = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+function artEnsure(cv, w, h) {
+  const dpr = dprNow(), a = cv._art;
+  if (a && a._w >= w && a._h >= h && a._dpr === dpr) return a;
+  const nw = Math.ceil(Math.max(w, a ? a._w : 0)), nh = Math.ceil(Math.max(h, a ? a._h : 0));
+  const n = document.createElement('canvas');
+  n.width = Math.ceil(nw * dpr); n.height = Math.ceil(nh * dpr);
+  n._w = nw; n._h = nh; n._dpr = dpr;
+  if (a) n.getContext('2d').drawImage(a, 0, 0, a._w * dpr, a._h * dpr);
+  cv._art = n;
+  return n;
+}
+function blit(cv) {
+  if (!cv.width) return;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (cv._art) ctx.drawImage(cv._art, 0, 0);
+}
+function fitCanvas(p) {
+  const cv = p.querySelector('canvas');
+  if (!cv) return;
+  if (!p.classList.contains('draw')) { if (cv.width) cv.width = cv.height = 0; return; }   // hidden: free it
+  const box = cv.parentNode.getBoundingClientRect();
+  if (!box.width || !box.height) return;
+  const dpr = dprNow(), W = Math.ceil(box.width * dpr), H = Math.ceil(box.height * dpr);
+  if (cv._art && cv._art._dpr !== dpr) artEnsure(cv, 0, 0);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  blit(cv);
+}
+function loadDrawing(cv, n) {
+  cv._drawId = n.draw; cv._dw = +n.dw || 0; cv._dh = +n.dh || 0; cv._inked = true; cv._loading = true;
+  picURL(n.draw).then(loadImage).then(im => {
+    const w = cv._dw || im.naturalWidth, h = cv._dh || im.naturalHeight, art = artEnsure(cv, w, h), ctx = art.getContext('2d');
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.drawImage(im, 0, 0, w * art._dpr, h * art._dpr);
+    ctx.restore();
+    blit(cv);
+  }).catch(() => toast("A drawing in this note couldn't be loaded.")).finally(() => { cv._loading = false; });
+}
+function line(cv, a, b) {
+  const erase = cv.closest('.pane').dataset.erase === '1', size = +$('#penSize').value, art = cv._art;
+  for (const [ctx, k] of [[art.getContext('2d'), art._dpr], [cv.getContext('2d'), dprNow()]]) {
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = erase ? '#000' : $('#pen').value;
+    ctx.lineWidth = erase ? size * 4 : size;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x + (a.x === b.x && a.y === b.y ? 0.01 : 0), b.y);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  cv._inked = true;
+}
+function setupCanvas(cv) {
+  let last = null, pid = null;
+  const at = e => { const r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  cv.addEventListener('pointerdown', e => {
+    const p = cv.closest('.pane');
+    if (!p.classList.contains('draw') || cv._loading || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    setActive(p);
+    const r = cv.getBoundingClientRect();
+    artEnsure(cv, r.width, r.height);
+    pid = e.pointerId;
+    try { cv.setPointerCapture(pid); } catch (_) { /* fine */ }
+    last = at(e);
+    line(cv, last, last);
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (e.pointerId !== pid) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    for (const ev of evs.length ? evs : [e]) { const cur = at(ev); line(cv, last, cur); last = cur; }
+    e.preventDefault();
+  });
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    pid = null; last = null;
+    cv._dirty = true; cv._gen = (cv._gen || 0) + 1;
+    changed();
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+}
+// Upload changed drawings as pictures; run before every save.
+async function flushDrawings() {
+  for (const cv of root.querySelectorAll('.pane canvas')) {
+    if (!cv._dirty || cv._loading) continue;
+    const gen = cv._gen;
+    if (!cv._inked || !cv._art) { cv._drawId = null; cv._dw = cv._dh = 0; }
+    else {
+      const blob = await new Promise(r => cv._art.toBlob(r, 'image/png'));
+      if (!blob) throw new Error("Couldn't encode a drawing.");
+      const id = newId();
+      picQueue.set(id, {blob, p: null});
+      try { await uploadPic(id); } catch (e) { picQueue.delete(id); throw e; }
+      cv._drawId = id; cv._dw = cv._art._w; cv._dh = cv._art._h;
+    }
+    if (cv._gen === gen) cv._dirty = false;
+  }
+}
+// Swapping two panes swaps their whole contents (text, pictures, drawing) and mode.
+function swapPanes(a, b) {
+  const ca = a.querySelector('.content'), cb = b.querySelector('.content'), ph = document.createElement('div');
+  ca.replaceWith(ph); cb.replaceWith(ca); ph.replaceWith(cb);
+  const da = a.classList.contains('draw'), db = b.classList.contains('draw');
+  setMode(a, db); setMode(b, da);
+  setActive(b);
+  changed();
+}
+
+/* drag and drop on the board: panes onto panes (swap), pictures into text */
+root.addEventListener('dragstart', e => {
+  const t = elOf(e.target);
+  if (t && t.tagName === 'IMG' && t.closest('.text')) {
+    dragImg = t;
+    e.dataTransfer.effectAllowed = 'copyMove';
+    try { e.dataTransfer.setData('text/plain', ' '); } catch (_) { /* fine */ }
+  }
+});
+root.addEventListener('dragend', () => { dragImg = null; endDropUI(); });
+root.addEventListener('dragover', e => {
+  const p = elOf(e.target) && elOf(e.target).closest('.pane');
+  if (dragSrc) {
+    root.querySelectorAll('.pane.dragover').forEach(x => { if (x !== p) x.classList.remove('dragover'); });
+    if (p && p !== dragSrc) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; p.classList.add('dragover'); }
+    return;
+  }
+  if (!p || !isPictureDrag(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = dragImg ? 'move' : 'copy';
+  if (!p.classList.contains('dropping')) { endDropUI(); p.classList.add('dropping'); }
+  showDropCaret(caretAt(p, e.clientX, e.clientY));
+});
+root.addEventListener('dragleave', e => { if (!e.relatedTarget || !root.contains(e.relatedTarget)) endDropUI(); });
+root.addEventListener('drop', e => {
+  const p = elOf(e.target) && elOf(e.target).closest('.pane');
+  if (dragSrc) {
+    e.preventDefault();
+    if (p && p !== dragSrc) swapPanes(dragSrc, p);
+    dragSrc = null;
+    root.querySelectorAll('.pane').forEach(x => x.classList.remove('dragging', 'dragover'));
+    return;
+  }
+  if (!p || !isPictureDrag(e)) return;
+  e.preventDefault();
+  const range = caretAt(p, e.clientX, e.clientY);
+  endDropUI();
+  dropOnPane(p, range, e.dataTransfer);
+});
+// A file dropped anywhere else must not make the browser navigate away to it.
+window.addEventListener('dragover', e => {
+  if (e.defaultPrevented || !e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'none';
+});
+window.addEventListener('drop', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+
+root.addEventListener('paste', e => {
+  const t = elOf(e.target) && elOf(e.target).closest('.text');
+  if (!t) return;
+  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
+  if (files.length) {
+    e.preventDefault();
+    const sel = getSelection(), r = sel.rangeCount ? sel.getRangeAt(0) : null;
+    if (r) r.deleteContents();
+    insertFiles(t.closest('.pane'), r, files);
+    return;
+  }
+  setTimeout(async () => { scrub(t); await adoptDataImages(t); changed(); }, 0);   // pasted HTML
+});
+root.addEventListener('input', () => changed());
+// Links in the text open with Cmd/Ctrl-click (a plain click places the caret).
+root.addEventListener('click', e => {
+  const a = elOf(e.target) && elOf(e.target).closest('.text a[href]');
+  if (a && (e.metaKey || e.ctrlKey)) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
+});
+
+/* toolbar: text */
+document.querySelectorAll('#textTools [data-cmd]').forEach(b => {
+  b.addEventListener('mousedown', e => e.preventDefault());   // keep the selection
+  b.onclick = () => document.execCommand(b.dataset.cmd, false, null);
+});
+$('#font').onchange = e => document.execCommand('fontName', false, e.target.value);
+$('#size').onchange = e => document.execCommand('fontSize', false, e.target.value);
+$('#fg').oninput = e => { $('#fgDot').style.background = e.target.value; document.execCommand('foreColor', false, e.target.value); };
+$('#pen').oninput = e => { $('#penDot').style.background = e.target.value; };
+
+/* format painter: select source text, click, then select the target */
+const PAINT_PROPS = ['fontWeight', 'fontStyle', 'textDecorationLine', 'color', 'fontFamily', 'fontSize', 'backgroundColor'];
+let copiedFormat = null, painterArmed = false;
+const painterBtn = $('#painter');
+painterBtn.addEventListener('mousedown', e => e.preventDefault());
+painterBtn.onclick = () => {
+  if (painterArmed) { painterArmed = false; painterBtn.classList.remove('on'); return; }
+  const sel = getSelection();
+  const node = sel.rangeCount && elOf(sel.anchorNode);
+  if (!node || !node.closest('.text')) return toast('Select some text to copy its look first.');
+  const cs = getComputedStyle(node);
+  copiedFormat = {};
+  PAINT_PROPS.forEach(k => { copiedFormat[k] = cs[k]; });
+  painterArmed = true; painterBtn.classList.add('on');
+};
+document.addEventListener('mouseup', () => {
+  if (!painterArmed) return;
+  const sel = getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) return;
+  const node = elOf(sel.anchorNode);
+  if (!node || !node.closest('.text')) return;
+  const range = sel.getRangeAt(0), span = document.createElement('span');
+  PAINT_PROPS.forEach(k => { if (copiedFormat[k]) span.style[k] = copiedFormat[k]; });
+  try {
+    span.appendChild(range.extractContents());
+    range.insertNode(span);
+    const r = document.createRange();
+    r.selectNodeContents(span);
+    sel.removeAllRanges(); sel.addRange(r);
+    changed();
+  } catch (e) { /* selection crossed panes */ }
+  painterArmed = false; painterBtn.classList.remove('on');
+});
+
+/* toolbar: pictures */
+let picRange = null;
+$('#pic').addEventListener('mousedown', e => e.preventDefault());
+$('#pic').onclick = () => {
+  if (!active) return;
+  const sel = getSelection(), t = active.querySelector('.text');
+  picRange = sel.rangeCount && t.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null;
+  $('#picFile').click();
+};
+$('#picFile').onchange = e => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (active && files.length) insertFiles(active, picRange, files);
+};
+
+/* toolbar: drawing + structure */
+$('#erase').onclick = () => {
+  if (!active) return;
+  const on = active.dataset.erase !== '1';
+  active.dataset.erase = on ? '1' : '0';
+  $('#erase').classList.toggle('on', on);
+  if (!active.classList.contains('draw')) { setMode(active, true); changed(); }
+};
+$('#clearPane').onclick = () => {
+  if (!active) return;
+  const cv = active.querySelector('canvas');
+  if (cv._loading) return;
+  if (cv._art) { const c = cv._art.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv._art.width, cv._art.height); }
+  cv._inked = false; cv._dirty = true; cv._gen = (cv._gen || 0) + 1;
+  blit(cv);
+  changed();
+};
+$('#splitV').onclick = () => split('row');
+$('#splitH').onclick = () => split('col');
+$('#del').onclick = deletePane;
+
+/* ---------- model <-> DOM ----------
+   note = {v:1, root: node}
+   node = {t:'split', dir:'row'|'col', flex, kids:[node...]}
+        | {t:'pane', mode:'text'|'draw', flex, html, draw?: picId, dw?, dh?}   (dw/dh: drawing size, CSS px) */
+function normalizeNode(n) {
+  if (!n || typeof n !== 'object') return {t: 'pane', mode: 'text', html: ''};
+  if (n.t === 'split') {
+    const kids = (Array.isArray(n.kids) ? n.kids : []).map(normalizeNode);
+    if (!kids.length) return {t: 'pane', mode: 'text', html: '', flex: n.flex};
+    if (kids.length === 1) return {...kids[0], flex: n.flex || kids[0].flex};
+    return {t: 'split', dir: n.dir === 'col' ? 'col' : 'row', flex: n.flex, kids};
+  }
+  return n;
+}
+function buildNode(n) {
+  if (n.t === 'split') {
+    const c = document.createElement('div');
+    c.className = 'split ' + n.dir;
+    c.style.flex = n.flex || '1 1 0';
+    n.kids.forEach((k, i) => { if (i) c.appendChild(makeGutter()); c.appendChild(buildNode(k)); });
+    return c;
+  }
+  const p = makePane();
+  p.style.flex = n.flex || '1 1 0';
+  const t = p.querySelector('.text');
+  t.innerHTML = clean(n.html);
+  hydratePics(t);
+  if (n.mode === 'draw') setMode(p, true);
+  if (typeof n.draw === 'string' && IDRE.test(n.draw)) loadDrawing(p.querySelector('canvas'), n);
+  return p;
+}
+function renderModel(model) {
+  root.querySelectorAll('.pane').forEach(releasePane);
+  root.innerHTML = '';
+  active = null;
+  root.appendChild(buildNode(normalizeNode(model && model.root)));
+  setActive(root.querySelector('.pane'));
+}
+function readNode(e) {
+  if (e.classList.contains('split'))
+    return {t: 'split', dir: e.classList.contains('col') ? 'col' : 'row', flex: e.style.flex || '1 1 0',
+      kids: [...e.children].filter(c => !c.classList.contains('gutter')).map(readNode)};
+  const cv = e.querySelector('canvas');
+  const n = {t: 'pane', mode: e.classList.contains('draw') ? 'draw' : 'text', flex: e.style.flex || '1 1 0', html: storedHTML(e.querySelector('.text'))};
+  if (cv._drawId) { n.draw = cv._drawId; n.dw = cv._dw; n.dh = cv._dh; }
+  return n;
+}
+function readModel() {
+  const top = root.firstElementChild;
+  return {v: 1, root: top ? readNode(top) : {t: 'pane', mode: 'text', html: ''}};
+}
+function picsOf(model) {
+  const ids = new Set();
+  (function walk(n) {
+    if (!n) return;
+    if (n.t === 'split') return n.kids.forEach(walk);
+    if (n.draw) ids.add(n.draw);
+    for (const m of String(n.html || '').matchAll(/data-pic="([A-Za-z0-9_-]{16,32})"/g)) ids.add(m[1]);
+  })(model.root);
+  return [...ids];
+}
+const blankNote = () => ({v: 1, root: {t: 'pane', mode: 'text', flex: '1 1 0', html: ''}});
+
+/* ==========================================================================
+   notes: open, autosave, conflicts
+   Every save sends the rev it started from; if another device saved in between,
+   the server says 409 and this device's version is kept as a separate note.
+   ========================================================================== */
+let saveT = null, loadSeq = 0;
+function changed() {
+  const o = S.open;
+  if (!o) return;
+  o.dirty = true; o.gen++;
+  setStatus('unsaved');
+  clearTimeout(saveT);
+  saveT = setTimeout(save, o.big ? 3000 : 1200);
+}
+function save() {
+  const o = S.open;
+  if (!o) return Promise.resolve(true);
+  clearTimeout(saveT);
+  if (o.saving) { o.again = true; return o.saving; }
+  if (!o.dirty) return Promise.resolve(true);
+  const gen = o.gen;
+  o.saving = (async () => {
+    try {
+      await flushDrawings();
+      const model = readModel(), json = JSON.stringify(model), pics = picsOf(model);
+      await Promise.all(pics.filter(id => picQueue.has(id)).map(uploadPic));
+      if (json !== o.json) {
+        setStatus('saving');
+        const body = await seal(te.encode(json), 'note:' + o.id);
+        o.big = body.length > 300000;
+        const r = await apiJSON('PUT', 'notes/' + o.id + '?rev=' + o.rev, {body, headers: {'X-Pics': pics.join(',')}});
+        o.rev = r.rev; o.json = json;
+        const m = S.notes.get(o.id);
+        if (m) Object.assign(m, {rev: r.rev, updated: r.updated, size: r.size});
+        renderTreeSoon();
+      }
+      o.fails = 0;
+      if (o.gen === gen) { o.dirty = false; setStatus('saved'); }
+      return true;
+    } catch (e) {
+      if (S.open !== o) return false;
+      if (e.status === 409) return conflict(o);
+      if (e.status === 404) return resurrect(o);
+      setStatus(e.status === 0 ? 'offline' : 'error');
+      if (e.status && e.status !== 413) toast(e.message);
+      if (e.status === 413) { toast(e.message, 8000); return false; }
+      o.fails = (o.fails || 0) + 1;
+      clearTimeout(saveT);
+      saveT = setTimeout(save, Math.min(30000, 1500 * 2 ** Math.min(o.fails, 5)));
+      return false;
+    } finally {
+      o.saving = null;
+      if (o.again && S.open === o) { o.again = false; if (o.dirty) setTimeout(save, 0); }
+    }
+  })();
+  return o.saving;
+}
+// Save the open note now and wait for it. False if it can't be saved (offline).
+async function flush() {
+  const o = S.open;
+  if (!o) return true;
+  if (titleT) await saveTitle();
+  for (let i = 0; i < 5 && S.open === o && (o.dirty || o.saving); i++) {
+    const ok = await (o.saving || save());
+    if (!ok && S.open === o && o.dirty) break;
+  }
+  if (S.open === o && (o.dirty || o.saving)) {
+    toast("This note isn't saved yet (no connection?). Your changes are still here; try again in a moment.", 6000);
+    return false;
+  }
+  return true;
+}
+async function conflict(o) {
+  const meta = S.notes.get(o.id) || {label: $('#title').value.trim(), folder: null};
+  try {
+    const label = (meta.label || 'Untitled') + ' (my version, ' + new Date().toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}) + ')';
+    await createNote(newId(), label, meta.folder && S.folders.has(meta.folder) ? meta.folder : null, readModel());
+    await refreshTree();
+    await loadNote(o.id);
+    toast('This note was changed on another device. Your version was kept as "' + label + '".', 9000);
+    return true;
+  } catch (e) { setStatus('error'); toast(e.message); return false; }
+}
+async function resurrect(o) {
+  const meta = S.notes.get(o.id) || {};
+  try {
+    const model = readModel();
+    const m = await createNote(o.id, (meta.label != null ? meta.label : $('#title').value.trim()), meta.folder && S.folders.has(meta.folder) ? meta.folder : null, model);
+    o.rev = m.rev; o.json = JSON.stringify(model); o.dirty = false;
+    setStatus('saved');
+    renderTree();
+    toast('This note had been deleted on another device. You were still editing it, so it was saved again.', 8000);
+    return true;
+  } catch (e) { setStatus('error'); toast(e.message); return false; }
+}
+async function createNote(id, label, folder, model, times = {}) {
+  const json = JSON.stringify(model), pics = picsOf(model);
+  await Promise.all(pics.filter(x => picQueue.has(x)).map(uploadPic));
+  const title = await sealText(label, 'title:' + id);
+  const headers = {'X-Title': title, 'X-Pics': pics.join(',')};
+  if (folder) headers['X-Folder'] = folder;
+  if (times.created > 0) headers['X-Created'] = String(times.created);
+  if (times.updated > 0) headers['X-Updated'] = String(times.updated);
+  const r = await apiJSON('PUT', 'notes/' + id + '?rev=0', {body: await seal(te.encode(json), 'note:' + id), headers});
+  const meta = {id, folder: folder || null, title, label, created: r.created, updated: r.updated, rev: r.rev, size: r.size};
+  S.labels.set(title, label);
+  S.notes.set(id, meta);
+  return meta;
+}
+async function openNote(id) {
+  if (S.open && S.open.id === id) return true;
+  if (!(await flush())) return false;
+  return loadNote(id);
+}
+async function loadNote(id) {
+  const meta = S.notes.get(id);
+  if (!meta) return false;
+  const seq = ++loadSeq;
+  setStatus('loading');
+  let model, rev;
+  try {
+    const r = await api('GET', 'notes/' + id);
+    rev = Number(r.headers.get('X-Rev')) || meta.rev;
+    model = JSON.parse(td.decode(await unseal(new Uint8Array(await r.arrayBuffer()), 'note:' + id)));
+  } catch (e) {
+    if (seq === loadSeq) setStatus('');
+    if (e.status === 404) { S.notes.delete(id); renderTree(); }
+    toast(e.status === 404 ? 'That note no longer exists.' : e.status !== undefined ? e.message : "Couldn't open that note.");
+    return false;
+  }
+  if (seq !== loadSeq) return false;
+  clearTimeout(saveT);
+  S.open = {id, rev, dirty: false, saving: null, gen: 0, json: ''};
+  showEditor();
+  renderModel(model);
+  S.open.json = JSON.stringify(readModel());
+  $('#title').value = meta.label || '';
+  S.cwd = meta.folder && S.folders.has(meta.folder) ? meta.folder : null;
+  localStorage.setItem('mp.last', id);
+  setStatus('saved');
+  renderTree();
+  return true;
+}
+function showEditor() {
+  for (const s of ['#root', '#bar', '#title', '#noteMenu']) $(s).hidden = false;
+  $('#topSpacer').hidden = true;
+  $('#empty').hidden = true;
+}
+function showEmpty() {
+  clearTimeout(saveT);
+  S.open = null;
+  root.querySelectorAll('.pane').forEach(releasePane);
+  root.innerHTML = '';
+  active = null;
+  for (const s of ['#root', '#bar', '#title', '#noteMenu']) $(s).hidden = true;
+  $('#topSpacer').hidden = false;
+  $('#empty').hidden = false;
+  setStatus('');
+  renderTree();
+}
+
+/* title: lives in the note's metadata, saved on its own */
+let titleT = null;
+$('#title').addEventListener('input', () => {
+  const o = S.open, m = o && S.notes.get(o.id);
+  if (m) { m.label = $('#title').value.trim(); renderTreeSoon(); }
+  clearTimeout(titleT);
+  titleT = setTimeout(saveTitle, 700);
+});
+$('#title').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const t = active && active.querySelector('.text');
+  if (t && !active.classList.contains('draw')) t.focus();
+});
+function saveTitle() {
+  clearTimeout(titleT); titleT = null;
+  return S.open ? renameNote(S.open.id, $('#title').value.trim()) : Promise.resolve();
+}
+
+/* ==========================================================================
+   folders + notes list
+   ========================================================================== */
+async function refreshTree() {
+  const t = await apiJSON('GET', 'tree');
+  const label = (ct, aad) => S.labels.has(ct) ? S.labels.get(ct)
+    : unsealText(ct, aad).then(v => { S.labels.set(ct, v); return v; }, () => '(unreadable)');
+  const folders = new Map(), notes = new Map();
+  await Promise.all([
+    ...t.folders.map(async f => { f.label = await label(f.name, 'folder:' + f.id); folders.set(f.id, f); }),
+    ...t.notes.map(async n => { n.label = await label(n.title, 'title:' + n.id); notes.set(n.id, n); }),
+  ]);
+  // keep the title being typed rather than a stale server copy
+  if (S.open && titleT && notes.has(S.open.id)) notes.get(S.open.id).label = $('#title').value.trim();
+  S.folders = folders; S.notes = notes;
+  if (S.cwd && !folders.has(S.cwd)) S.cwd = null;
+  renderTree();
+}
+const parentOf = f => (f.parent && S.folders.has(f.parent) ? f.parent : null);
+const folderOf = n => (n.folder && S.folders.has(n.folder) ? n.folder : null);
+function notesUnder(fid) {
+  const ids = new Set([fid]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const f of S.folders.values()) if (parentOf(f) && ids.has(parentOf(f)) && !ids.has(f.id)) { ids.add(f.id); grew = true; }
+  }
+  return [...S.notes.values()].filter(n => ids.has(folderOf(n))).map(n => n.id);
+}
+function isInside(fid, maybeAncestor) {
+  for (let p = fid, i = 0; p && i < 200; p = parentOf(S.folders.get(p) || {}), i++) if (p === maybeAncestor) return true;
+  return false;
+}
+const byLabel = (a, b) => (a.label || '').localeCompare(b.label || '', undefined, {sensitivity: 'base', numeric: true});
+function renderTree() {
+  if (document.querySelector('#tree input.rename')) return;   // redrawn when the rename ends
+  const kidsF = new Map(), kidsN = new Map();
+  const push = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
+  for (const f of S.folders.values()) push(kidsF, parentOf(f), f);
+  for (const n of S.notes.values()) push(kidsN, folderOf(n), n);
+  const counts = new Map();
+  const count = id => {
+    if (counts.has(id)) return counts.get(id);
+    const c = (kidsN.get(id) || []).length + (kidsF.get(id) || []).reduce((s, f) => s + count(f.id), 0);
+    counts.set(id, c);
+    return c;
+  };
+  const html = [];
+  const walk = (pid, depth) => {
+    if (depth > 30) return;
+    for (const f of (kidsF.get(pid) || []).sort(byLabel)) {
+      const open = !S.collapsed.has(f.id), c = count(f.id);
+      html.push(`<div class="item folder${S.cwd === f.id ? ' cwd' : ''}" data-f="${f.id}" draggable="true" style="--d:${depth}">
+        <button type="button" class="caret${open ? ' open' : ''}" data-act="toggle" tabindex="-1">${icon('chev')}</button>
+        ${icon(open ? 'folder-open' : 'folder')}<span class="name">${esc(f.label || 'Folder')}</span>
+        <span class="count">${c || ''}</span><button type="button" class="ib more" data-act="menu" title="Folder actions">${icon('more')}</button></div>`);
+      if (open) walk(f.id, depth + 1);
+    }
+    for (const n of (kidsN.get(pid) || []).sort((a, b) => b.updated - a.updated)) {
+      html.push(`<div class="item note${S.open && S.open.id === n.id ? ' on' : ''}" data-n="${n.id}" draggable="true" style="--d:${depth}">
+        ${icon('note')}<span class="name${n.label ? '' : ' untitled'}">${esc(n.label || 'Untitled')}</span>
+        <time>${ago(n.updated)}</time><button type="button" class="ib more" data-act="menu" title="Note actions">${icon('more')}</button></div>`);
+    }
+  };
+  walk(null, 0);
+  $('#tree').innerHTML = html.join('') || '<p class="tree-empty">No notes yet. Make one with the buttons above.</p>';
+  const cwd = S.cwd && S.folders.get(S.cwd);
+  $('#newNote').title = cwd ? 'New note in ' + cwd.label : 'New note';
+  $('#newFolder').title = cwd ? 'New folder in ' + cwd.label : 'New folder';
+}
+let treeRAF = 0;
+function renderTreeSoon() { if (!treeRAF) treeRAF = requestAnimationFrame(() => { treeRAF = 0; renderTree(); }); }
+const rowOf = (kind, id) => document.querySelector(`#tree .item[data-${kind}="${id}"]`);
+function toggleFolder(id) {
+  if (S.collapsed.has(id)) S.collapsed.delete(id); else S.collapsed.add(id);
+  localStorage.setItem('mp.collapsed', JSON.stringify([...S.collapsed]));
+}
+const mobile = () => matchMedia('(max-width:760px)').matches;
+function closeSide() { document.body.classList.remove('side-open'); }
+
+// Double-click renames. Detected here rather than with dblclick: the first click re-renders
+// the list, so the browser's dblclick would land on a row that no longer exists.
+let lastTap = {key: '', t: 0, toggled: false};
+$('#tree').addEventListener('click', e => {
+  const row = e.target.closest('.item');
+  if (!row) { S.cwd = null; renderTree(); return; }
+  if (row.querySelector('input.rename')) return;
+  const act = e.target.closest('[data-act]');
+  const kind = row.dataset.f ? 'f' : 'n', id = row.dataset.f || row.dataset.n, now = Date.now();
+  if (act && act.dataset.act === 'menu') return kind === 'f' ? folderMenu(id, act) : noteMenu(id, act);
+  const double = !act && lastTap.key === kind + id && now - lastTap.t < 450;
+  if (double) {
+    if (lastTap.toggled) toggleFolder(id);   // undo the first click's open/close
+    lastTap = {key: '', t: 0, toggled: false};
+    renderTree();
+    return startRename(rowOf(kind, id));
+  }
+  if (kind === 'f') {
+    const toggle = !!act || S.cwd === id || S.collapsed.has(id);
+    if (toggle) toggleFolder(id);
+    lastTap = {key: kind + id, t: now, toggled: toggle};
+    S.cwd = id;
+    return renderTree();
+  }
+  lastTap = {key: kind + id, t: now, toggled: false};
+  openNote(id).then(ok => { if (ok && mobile()) closeSide(); });
+});
+$('#home').onclick = () => { S.cwd = null; renderTree(); };
+
+/* drag rows onto folders (or empty space for the top level) */
+let treeDrag = null;
+function dropTarget(e) {
+  const row = e.target.closest && e.target.closest('.item');
+  if (!row) return {target: null, row: null};
+  if (row.dataset.f) return {target: row.dataset.f, row};
+  const n = S.notes.get(row.dataset.n);
+  const f = n && folderOf(n);
+  return {target: f, row: f ? rowOf('f', f) : null};
+}
+function canMove(item, target) {
+  if (item.kind === 'n') { const n = S.notes.get(item.id); return !!n && folderOf(n) !== target; }
+  const f = S.folders.get(item.id);
+  return !!f && parentOf(f) !== target && !(target && isInside(target, item.id));
+}
+function clearTreeDrop() {
+  document.querySelectorAll('#tree .item.drop').forEach(r => r.classList.remove('drop'));
+  $('#tree').classList.remove('drop-root');
+}
+$('#tree').addEventListener('dragstart', e => {
+  const row = e.target.closest && e.target.closest('.item');
+  if (!row) return;
+  treeDrag = row.dataset.f ? {kind: 'f', id: row.dataset.f} : {kind: 'n', id: row.dataset.n};
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', 'mypager'); } catch (_) { /* fine */ }
+});
+$('#tree').addEventListener('dragend', () => { treeDrag = null; clearTreeDrop(); });
+$('#tree').addEventListener('dragover', e => {
+  if (!treeDrag) return;
+  const {target, row} = dropTarget(e);
+  clearTreeDrop();
+  if (!canMove(treeDrag, target)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (row) row.classList.add('drop'); else $('#tree').classList.add('drop-root');
+});
+$('#tree').addEventListener('drop', e => {
+  if (!treeDrag) return;
+  e.preventDefault();
+  const item = treeDrag, {target} = dropTarget(e);
+  treeDrag = null; clearTreeDrop();
+  if (canMove(item, target)) moveItem(item, target);
+});
+
+async function moveItem(item, target) {
+  try {
+    if (item.kind === 'n') {
+      await api('PATCH', 'notes/' + item.id, {json: {folder: target}});
+      S.notes.get(item.id).folder = target;
+      if (S.open && S.open.id === item.id) S.cwd = target;
+    } else {
+      await api('PATCH', 'folders/' + item.id, {json: {parent: target}});
+      S.folders.get(item.id).parent = target;
+    }
+    if (target && S.collapsed.has(target)) toggleFolder(target);
+    renderTree();
+  } catch (e) { toast(e.message); }
+}
+async function renameNote(id, label) {
+  const n = S.notes.get(id);
+  if (!n) return;
+  try {
+    const title = await sealText(label, 'title:' + id);
+    await api('PATCH', 'notes/' + id, {json: {title}});
+    S.labels.set(title, label);
+    n.title = title; n.label = label;
+    if (S.open && S.open.id === id && document.activeElement !== $('#title')) $('#title').value = label;
+    renderTreeSoon();
+  } catch (e) { toast(e.message); }
+}
+async function renameFolder(id, label) {
+  const f = S.folders.get(id);
+  if (!f) return;
+  label = label || 'Folder';
+  try {
+    const name = await sealText(label, 'folder:' + id);
+    await api('PATCH', 'folders/' + id, {json: {name}});
+    S.labels.set(name, label);
+    f.name = name; f.label = label;
+    renderTreeSoon();
+  } catch (e) { toast(e.message); }
+}
+function startRename(row) {
+  if (!row) return;
+  const isF = !!row.dataset.f, id = row.dataset.f || row.dataset.n;
+  const item = isF ? S.folders.get(id) : S.notes.get(id);
+  if (!item) return;
+  const name = row.querySelector('.name'), inp = document.createElement('input');
+  inp.className = 'rename'; inp.value = item.label || ''; inp.maxLength = 200;
+  inp.placeholder = isF ? 'Folder name' : 'Untitled';
+  name.replaceWith(inp);
+  row.draggable = false;
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = async keep => {
+    if (done) return;
+    done = true;
+    const v = inp.value.trim();
+    inp.replaceWith(name);
+    if (keep && v !== (item.label || '')) {
+      if (isF) await renameFolder(id, v);
+      else { await renameNote(id, v); if (S.open && S.open.id === id) $('#title').value = v; }
+    }
+    renderTree();
+  };
+  inp.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  inp.addEventListener('blur', () => finish(true));
+  inp.addEventListener('click', e => e.stopPropagation());
+}
+
+async function newNote(folder = S.cwd) {
+  if (!(await flush())) return;
+  try {
+    const meta = await createNote(newId(), '', folder && S.folders.has(folder) ? folder : null, blankNote());
+    if (meta.folder && S.collapsed.has(meta.folder)) toggleFolder(meta.folder);
+    await loadNote(meta.id);
+    if (mobile()) closeSide();
+    $('#title').focus();
+  } catch (e) { toast(e.message); }
+}
+async function newFolder(parent = S.cwd) {
+  const id = newId(), label = 'New folder';
+  parent = parent && S.folders.has(parent) ? parent : null;
+  try {
+    const name = await sealText(label, 'folder:' + id);
+    const r = await apiJSON('POST', 'folders', {json: {id, parent, name}});
+    S.labels.set(name, label);
+    S.folders.set(id, {id, parent, name, label, created: r.created, updated: r.created});
+  } catch (e) { return toast(e.message); }
+  if (parent && S.collapsed.has(parent)) toggleFolder(parent);
+  S.cwd = id;
+  if (mobile()) document.body.classList.add('side-open');
+  renderTree();
+  startRename(rowOf('f', id));
+}
+async function deleteNote(id) {
+  const n = S.notes.get(id);
+  if (!n) return;
+  if (!(await confirmBox('Delete "' + (n.label || 'Untitled') + '"?', 'It goes from every device, pictures and all. This can\'t be undone.', 'Delete note'))) return;
+  try { await api('DELETE', 'notes/' + id); } catch (e) { if (e.status !== 404) return toast(e.message); }
+  S.notes.delete(id);
+  if (S.open && S.open.id === id) showEmpty(); else renderTree();
+}
+async function deleteFolder(id) {
+  const f = S.folders.get(id);
+  if (!f) return;
+  const inside = notesUnder(id), subs = [...S.folders.values()].some(x => parentOf(x) === id);
+  let mode;
+  if (!inside.length && !subs) mode = (await confirmBox('Delete folder "' + f.label + '"?', "It's empty.", 'Delete folder')) ? 'all' : null;
+  else mode = await modal(`<h3>Delete folder "${esc(f.label)}"?</h3>
+      <p>It holds ${inside.length} note${inside.length === 1 ? '' : 's'}${subs ? ' and other folders' : ''}. Keep them (they move up a level), or delete everything in it?</p>
+      <div class="acts"><button class="btn" data-v="">Cancel</button><button class="btn" data-v="keep">Keep the notes</button>
+      <button class="btn danger" data-v="all">Delete everything</button></div>`,
+  (d, close) => d.querySelectorAll('[data-v]').forEach(b => b.onclick = () => close(b.dataset.v || null)));
+  if (!mode) return;
+  try { await api('DELETE', 'folders/' + id + (mode === 'keep' ? '?keep=1' : '')); } catch (e) { return toast(e.message); }
+  const openGone = mode === 'all' && S.open && inside.includes(S.open.id);
+  if (openGone) { clearTimeout(saveT); S.open = null; }
+  await refreshTree().catch(() => {});
+  if (openGone) showEmpty();
+}
+function moveDialog(item) {
+  const self = item.kind === 'f' ? S.folders.get(item.id) : S.notes.get(item.id);
+  if (!self) return;
+  const current = item.kind === 'f' ? parentOf(self) : folderOf(self);
+  const rows = [`<div class="item" data-t="" style="--d:0">${icon('inbox')}<span class="name">Top level</span></div>`];
+  const walk = (pid, depth) => {
+    for (const f of [...S.folders.values()].filter(x => parentOf(x) === pid).sort(byLabel)) {
+      if (item.kind === 'f' && (f.id === item.id)) continue;   // not into itself or below
+      rows.push(`<div class="item" data-t="${f.id}" style="--d:${depth}">${icon('folder')}<span class="name">${esc(f.label)}</span></div>`);
+      walk(f.id, depth + 1);
+    }
+  };
+  walk(null, 1);
+  let sel = current || '';
+  modal(`<h3>Move "${esc(self.label || 'Untitled')}" to…</h3><div class="picker">${rows.join('')}</div>
+    <div class="acts"><button class="btn" data-c>Cancel</button><button class="btn primary" data-ok>Move here</button></div>`, (d, close) => {
+    const mark = () => d.querySelectorAll('.picker .item').forEach(r => r.classList.toggle('sel', r.dataset.t === sel));
+    mark();
+    d.querySelector('.picker').onclick = e => { const r = e.target.closest('.item'); if (r) { sel = r.dataset.t; mark(); } };
+    d.querySelector('.picker').ondblclick = e => { if (e.target.closest('.item')) d.querySelector('[data-ok]').click(); };
+    d.querySelector('[data-c]').onclick = () => close();
+    d.querySelector('[data-ok]').onclick = () => { close(); const t = sel || null; if (t !== current) moveItem(item, t); };
+  });
+}
+
+function noteMenu(id, anchor) {
+  popMenu(anchor, [
+    {icon: 'edit', label: 'Rename', run: () => { const r = rowOf('n', id); if (r && !mobile()) startRename(r); else if (S.open && S.open.id === id) $('#title').focus(); else startRename(r); }},
+    {icon: 'move-to', label: 'Move to…', run: () => moveDialog({kind: 'n', id})},
+    {icon: 'download', label: 'Export (.html)', run: () => exportNotes([id])},
+    '-',
+    {icon: 'trash', label: 'Delete note', danger: true, run: () => deleteNote(id)},
+  ]);
+}
+function folderMenu(id, anchor) {
+  popMenu(anchor, [
+    {icon: 'note-plus', label: 'New note here', run: () => newNote(id)},
+    {icon: 'folder-plus', label: 'New folder here', run: () => newFolder(id)},
+    {icon: 'edit', label: 'Rename', run: () => startRename(rowOf('f', id))},
+    {icon: 'move-to', label: 'Move to…', run: () => moveDialog({kind: 'f', id})},
+    {icon: 'download', label: 'Export folder (.html)', run: () => exportNotes(notesUnder(id), S.folders.get(id).label)},
+    '-',
+    {icon: 'trash', label: 'Delete folder', danger: true, run: () => deleteFolder(id)},
+  ]);
+}
+function accountMenu(anchor) {
+  const n = pendingCarries().length;
+  popMenu(anchor, [
+    {icon: 'download', label: 'Export everything (.html)', run: () => exportNotes([...S.notes.keys()], 'All notes')},
+    {icon: 'upload', label: 'Import an old board file…', run: () => $('#importFile').click()},
+    ...(n ? [{icon: 'inbox', label: 'Finish imports (' + n + ')', run: () => runImports(true)}] : []),
+    '-',
+    {icon: 'key', label: 'Change password', run: changePassword},
+    {icon: 'logout', label: 'Log out', run: logout},
+  ]);
+}
+$('#newNote').onclick = () => newNote();
+$('#newFolder').onclick = () => newFolder();
+$('#emptyNote').onclick = () => newNote();
+$('#emptyFolder').onclick = () => newFolder();
+$('#emptyList').onclick = () => { if (mobile()) document.body.classList.add('side-open'); else document.body.classList.remove('side-closed'); };
+$('#acct').onclick = e => accountMenu(e.currentTarget);
+$('#noteMenu').onclick = e => { if (S.open) noteMenu(S.open.id, e.currentTarget); };
+$('#sideBtn').onclick = () => {
+  if (mobile()) return document.body.classList.toggle('side-open');
+  const closed = document.body.classList.toggle('side-closed');
+  localStorage.setItem('mp.side', closed ? 'closed' : 'open');
+};
+$('#scrim').onclick = closeSide;
+if (localStorage.getItem('mp.side') === 'closed') document.body.classList.add('side-closed');
+
+/* ==========================================================================
+   imports: the old mypager board and the old Notepad
+   A "carry" is an encrypted parcel on the server whose key arrives in the URL
+   fragment (#carry=<id>.<key>). Inside is the old data, still locked with its
+   old password, so this asks for that password unless it's the one just used.
+   ========================================================================== */
+const pendingCarries = () => readLS('mp.carries', []);
+function setCarries(list) {
+  localStorage.setItem('mp.carries', JSON.stringify(list));
+  const n = list.length, b = $('#impBadge');
+  b.hidden = !n; b.textContent = n;
+}
+const dropCarry = id => setCarries(pendingCarries().filter(c => c.id !== id));
+const LATER = 'later', DISCARD = 'discard';
+async function pbkdf2Key(pw, salt, iterations) {
+  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name: 'PBKDF2', salt, iterations, hash: 'SHA-256'}, base, {name: 'AES-GCM', length: 256}, false, ['decrypt']);
+}
+const LEGACY = {
+  board: {
+    title: 'Import your old board',
+    text: 'The board this browser had in the old mypager is still locked with the password you used there. Enter it to bring the board in.',
+    label: 'Old mypager password',
+    // old app: PBKDF2-SHA256, fixed salt, 200k; blob = {iv, ct} in base64
+    async open(blob, pw) {
+      const o = JSON.parse(blob);
+      const key = await pbkdf2Key(pw, te.encode('board.v2.fixed-salt'), 200000);
+      return td.decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(o.iv)}, key, unb64(o.ct)));
+    },
+  },
+  notepad: {
+    title: 'Import your old Notepad',
+    text: 'Your notes from the old Notepad app (Jan to Feb 2026, on GitHub) are locked with its 6-digit PIN. Enter it to bring them in.',
+    label: 'Notepad PIN',
+    numeric: true,
+    // old app: base64(salt16 | iv12 | ct), PBKDF2-SHA256 100k over the PIN
+    async open(blob, pw) {
+      const u = unb64(blob);
+      const key = await pbkdf2Key(pw, u.subarray(0, 16), 100000);
+      const notes = JSON.parse(td.decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u.subarray(16, 28)}, key, u.subarray(28))));
+      if (!Array.isArray(notes)) throw new Error('not notepad data');
+      return notes;
+    },
+  },
+};
+async function unlockLegacy(kind, blob, interactive) {
+  const L = LEGACY[kind];
+  if (S.pw) { try { return await L.open(blob, S.pw); } catch (e) { /* not this one */ } }
+  if (!interactive) return LATER;
+  let error = '';
+  for (;;) {
+    const ans = await formDialog({
+      title: L.title, text: L.text,
+      fields: [{name: 'pw', label: L.label, type: 'password', auto: 'off', numeric: L.numeric}],
+      ok: {label: 'Import', run: v => (v.pw ? '' : 'Enter it first.')},
+      extra: {label: "Don't import it", value: DISCARD},
+    }).then(v => v, () => undefined);
+    if (ans === DISCARD) {
+      if (await confirmBox('Skip this import for good?', "It won't be offered again on this device. The old copy itself isn't touched.", 'Skip it')) return DISCARD;
+      continue;
+    }
+    if (!ans) return LATER;
+    try { return await L.open(blob, ans.pw); }
+    catch (e) { error = kind === 'notepad' ? "That PIN doesn't open it." : "That password doesn't open it."; toast(error); }
+  }
+}
+// The old board was saved as the HTML of its pane tree; rebuild it as a note.
+async function modelFromOldBoard(html) {
+  const doc = new DOMParser().parseFromString('<div id="r">' + html + '</div>', 'text/html');
+  const isNode = e => e.classList && (e.classList.contains('split') || e.classList.contains('pane'));
+  let anything = false;
+  const walk = async e => {
+    if (e.classList.contains('split')) {
+      const kids = [];
+      for (const c of [...e.children].filter(isNode)) kids.push(await walk(c));
+      return {t: 'split', dir: e.classList.contains('col') ? 'col' : 'row', flex: e.style.flex || '1 1 0', kids};
+    }
+    const holder = document.createElement('div'), t = e.querySelector('.text'), cv = e.querySelector('canvas');
+    holder.innerHTML = clean(t ? t.innerHTML : '');
+    await adoptDataImages(holder);
+    const n = {t: 'pane', mode: e.classList.contains('draw') ? 'draw' : 'text', flex: e.style.flex || '1 1 0', html: storedHTML(holder)};
+    const src = cv && cv.getAttribute('data-img');
+    if (src && /^data:image\/png;base64,/.test(src)) Object.assign(n, await drawingFrom(src));
+    if (holder.textContent.trim() || holder.querySelector('img') || n.draw) anything = true;
+    return n;
+  };
+  const tops = [...doc.getElementById('r').children].filter(isNode);
+  if (!tops.length) return null;
+  let node;
+  if (tops.length === 1) node = await walk(tops[0]);
+  else { const kids = []; for (const t of tops) kids.push(await walk(t)); node = {t: 'split', dir: 'row', flex: '1 1 0', kids}; }
+  return anything ? {v: 1, root: normalizeNode(node)} : null;
+}
+// The old app saved every canvas, drawn on or not: skip blank ones.
+async function drawingFrom(src) {
+  const im = await loadImage(src), w = im.naturalWidth, h = im.naturalHeight;
+  if (!w || !h) return {};
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(im, 0, 0);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let ink = false;
+  for (let i = 3; i < d.length && !ink; i += 4) if (d[i]) ink = true;
+  if (!ink) return {};
+  const id = newId();
+  picQueue.set(id, {blob: dataURLToBlob(src), p: null});
+  await uploadPic(id);
+  return {draw: id, dw: w, dh: h};
+}
+async function importBoard(html, title) {
+  const model = await modelFromOldBoard(html);
+  return model ? createNote(newId(), title, null, model) : null;
+}
+async function importNotepad(notes) {
+  const good = notes.filter(n => n && typeof n.content === 'string' && n.content.trim());
+  if (!good.length) { toast('The old Notepad had no notes in it.'); return []; }
+  const fid = newId(), name = await sealText('Notepad', 'folder:' + fid);
+  const r = await apiJSON('POST', 'folders', {json: {id: fid, parent: null, name}});
+  S.labels.set(name, 'Notepad');
+  S.folders.set(fid, {id: fid, parent: null, name, label: 'Notepad', created: r.created, updated: r.created});
+  const out = [];
+  for (const n of good) {
+    const lines = n.content.replace(/\r\n?/g, '\n').split('\n');
+    const html = lines.map(l => l.trim()
+      ? '<div>' + esc(l).replace(/\t/g, '    ').replace(/ {2}/g, ' &nbsp;') + '</div>' : '<div><br></div>').join('');
+    const title = (lines.find(l => l.trim()) || n.title || 'Untitled').trim().slice(0, 80);
+    out.push(await createNote(newId(), title, fid, {v: 1, root: {t: 'pane', mode: 'text', flex: '1 1 0', html}},
+      {created: Date.parse(n.createdAt) || 0, updated: Date.parse(n.updatedAt) || 0}));
+  }
+  return out;
+}
+// -> list of created notes, or LATER
+async function importPayload(p, interactive) {
+  if (!p || typeof p !== 'object') return [];
+  if (typeof p.notepad === 'string') {
+    const notes = await unlockLegacy('notepad', p.notepad, interactive);
+    if (notes === LATER) return LATER;
+    return notes === DISCARD ? [] : importNotepad(notes);
+  }
+  if (typeof p.board !== 'string' && typeof p.boardPlain !== 'string') return [];
+  let html = null;
+  if (typeof p.board === 'string') {
+    html = await unlockLegacy('board', p.board, interactive);
+    if (html === LATER) return LATER;
+    if (html === DISCARD) html = null;
+  }
+  const from = p.label ? ' (' + String(p.label).slice(0, 40) + ')' : '';
+  const out = [];
+  if (html !== null) { const m = await importBoard(html, 'Old board' + from); if (m) out.push(m); }
+  if (typeof p.boardPlain === 'string' && p.boardPlain !== html) {
+    const m = await importBoard(p.boardPlain, 'Old board, unencrypted copy' + from);
+    if (m) out.push(m);
+  }
+  if (!out.length && html !== null) toast('The old board from that browser was empty, so there was nothing to bring in.');
+  return out;
+}
+let importing = false;
+async function runImports(interactive) {
+  if (importing) return;
+  importing = true;
+  let made = [];
+  try {
+    for (const c of pendingCarries()) {
+      let payload;
+      try {
+        const r = await api('GET', 'carry/' + c.id);
+        const key = await crypto.subtle.importKey('raw', unb64u(c.k), 'AES-GCM', false, ['decrypt']);
+        const u = new Uint8Array(await r.arrayBuffer());
+        payload = JSON.parse(td.decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv: u.subarray(0, 12)}, key, u.subarray(12))));
+      } catch (e) {
+        if (e.status === 0) return;   // offline: keep everything for later
+        dropCarry(c.id);
+        toast(e.status === 404 ? 'An import link had already been used or had expired.' : "One import couldn't be opened, so it was skipped.");
+        continue;
+      }
+      try {
+        const res = await importPayload(payload, interactive);
+        if (res === LATER) continue;
+        made = made.concat(res);
+      } catch (e) { toast('Import stopped: ' + e.message + ' It will be offered again.'); continue; }
+      api('DELETE', 'carry/' + c.id).catch(() => {});
+      dropCarry(c.id);
+    }
+  } finally {
+    importing = false;
+    setCarries(pendingCarries());
+    if (made.length) {
+      renderTree();
+      toast('Imported ' + made.length + (made.length === 1 ? ' note.' : ' notes.'), 6000);
+      if (!S.open) openNote(made[0].id);
+    }
+  }
+}
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  let p = null;
+  try { p = JSON.parse(await f.text()); } catch (x) { /* not json */ }
+  if (!p || (p.kind !== 'mypager-board' && p.kind !== 'notepad')) return toast("That file isn't an old mypager board.");
+  try {
+    const made = await importPayload(p, true);
+    if (made === LATER || !made.length) return;
+    renderTree();
+    toast('Imported ' + made.length + (made.length === 1 ? ' note.' : ' notes.'));
+    openNote(made[0].id);
+  } catch (x) { toast('Import failed: ' + x.message); }
+};
+
+/* ==========================================================================
+   export: read-only HTML snapshots (pictures inlined), opens anywhere
+   ========================================================================== */
+async function staticBoard(model) {
+  const node = async n => {
+    if (n.t === 'split') {
+      const kids = [];
+      for (const k of n.kids) kids.push(await node(k));
+      return `<div class="s ${n.dir === 'col' ? 'c' : 'r'}" style="flex:${esc(n.flex || '1 1 0')}">${kids.join('<i></i>')}</div>`;
+    }
+    const t = document.createElement('template');
+    t.innerHTML = clean(n.html);
+    for (const img of [...t.content.querySelectorAll('img[data-pic]')]) {
+      try { img.src = await picDataURL(img.dataset.pic); img.removeAttribute('data-pic'); } catch (e) { img.remove(); }
+    }
+    let draw = '';
+    if (n.draw) { try { draw = `<img class="d" alt="" src="${await picDataURL(n.draw)}" style="width:${+n.dw || 0}px">`; } catch (e) { /* skip */ } }
+    return `<div class="p" style="flex:${esc(n.flex || '1 1 0')}"><div class="t">${t.innerHTML}</div>${draw}</div>`;
+  };
+  return node(normalizeNode(model.root));
+}
+function folderPath(fid) {
+  const out = [];
+  for (let f = fid && S.folders.get(fid), i = 0; f && i < 50; f = S.folders.get(parentOf(f)), i++) out.unshift(f.label);
+  return out.join(' / ');
+}
+async function exportNotes(ids, heading) {
+  if (!ids.length) return toast('Nothing to export there.');
+  if (S.open && ids.includes(S.open.id) && !(await flush())) return;
+  toast('Preparing the export…', 60000);
+  try {
+    const sections = [];
+    for (const id of ids) {
+      const meta = S.notes.get(id);
+      const r = await api('GET', 'notes/' + id);
+      const model = JSON.parse(td.decode(await unseal(new Uint8Array(await r.arrayBuffer()), 'note:' + id)));
+      const n = normalizeNode(model.root);
+      sections.push({meta, path: folderPath(folderOf(meta)) || 'Top level', html: await staticBoard(model),
+        tall: n.t === 'split', h: n.t === 'pane' && n.draw ? Math.round(+n.dh || 0) : 0});
+    }
+    const title = heading || (S.notes.get(ids[0]).label || 'Untitled');
+    const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title><style>
+body{margin:0;background:#0b0d10;color:#e6e8ec;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:28px 22px 60px}h1{font-size:20px;margin:0 0 4px}.sub{color:#8b93a1;font-size:13px;margin:0 0 30px}
+section{margin:0 0 42px}h2{font-size:17px;margin:0 0 2px}.meta{color:#8b93a1;font-size:12px;margin:0 0 10px}
+.b{display:flex;min-height:80px;border:1px solid #22262d;border-radius:10px;overflow:hidden;background:#121418}.b.tall{height:78vh}
+.s{display:flex;flex:1;min-width:0;min-height:0}.s.r{flex-direction:row}.s.c{flex-direction:column}.s>i{flex:0 0 1px;background:#22262d}
+.p{position:relative;flex:1;min-width:0;min-height:0;overflow:auto}.t{position:relative;padding:14px}.t img{max-width:100%;height:auto}
+.p img.d{position:absolute;left:0;top:0;max-width:none;pointer-events:none}a{color:#7db6ff}
+</style></head><body><main><h1>${esc(title)}</h1><p class="sub">Exported from mypager on ${esc(new Date().toLocaleString())}.</p>
+${sections.map(s => `<section><h2>${esc(s.meta.label || 'Untitled')}</h2><p class="meta">${esc(s.path)} · edited ${esc(new Date(s.meta.updated).toLocaleString())}</p>
+<div class="b${s.tall ? ' tall' : ''}"${s.h ? ` style="min-height:${s.h}px"` : ''}>${s.html}</div></section>`).join('\n')}
+</main></body></html>`;
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'note';
+    download('mypager-' + slug + '-' + new Date().toISOString().slice(0, 10) + '.html', doc, 'text/html');
+    toast('Export downloaded. It is not encrypted, so keep the file somewhere private.', 6000);
+  } catch (e) { toast('Export failed: ' + e.message); }
+}
+
+/* ==========================================================================
+   log in, sign up, unlock, password changes
+   ========================================================================== */
+const auth = {mode: 'login', invite: ''};
+const AUTH_TEXT = {
+  login: {sub: 'Log in to your notes.', go: 'Log in', swap: 'Create an account'},
+  signup: {sub: 'Create your account.', go: 'Create account', swap: 'I already have an account'},
+  unlock: {sub: 'Welcome back. Enter your password to unlock your notes on this device.', go: 'Unlock', swap: 'Log out'},
+  relogin: {sub: 'Your session ended. Log in again to carry on; nothing on screen is lost.', go: 'Log in', swap: 'Log out'},
+};
+function showAuth(mode, opts = {}) {
+  auth.mode = mode;
+  const T = AUTH_TEXT[mode];
+  $('#auth').hidden = false;
+  $('#authSub').textContent = T.sub;
+  $('#authGo').textContent = T.go;
+  $('#authSwap').textContent = T.swap;
+  $('#fPw2').hidden = $('#fInv').hidden = mode !== 'signup';
+  $('#authFine').hidden = mode !== 'signup';
+  $('#aId').readOnly = mode === 'unlock' || mode === 'relogin';
+  $('#aPw').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  if (opts.id !== undefined) $('#aId').value = opts.id;
+  $('#aPw').value = ''; $('#aPw2').value = '';
+  if (mode === 'signup' && auth.invite) $('#aInv').value = auth.invite;
+  $('#authErr').textContent = opts.error || '';
+  const n = pendingCarries().length;
+  $('#authNote').hidden = !n || mode === 'relogin';
+  $('#authNote').textContent = 'Once you are in, mypager will import ' + (n === 1 ? 'the old notes you brought over.' : n + ' bundles of old notes.');
+  ($('#aId').value && !$('#aId').readOnly ? $('#aPw') : $('#aId').readOnly ? $('#aPw') : $('#aId')).focus();
+}
+$('#authSwap').onclick = () => {
+  if (auth.mode === 'login') return showAuth('signup', {});
+  if (auth.mode === 'signup') return showAuth('login', {});
+  logout();
+};
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const go = $('#authGo'), err = $('#authErr');
+  if (go.disabled) return;
+  const id = $('#aId').value.trim().toLowerCase(), pw = $('#aPw').value, mode = auth.mode;
+  err.textContent = '';
+  if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(id)) { err.textContent = 'IDs are 3 to 32 characters: letters, digits, dot, dash or underscore.'; return; }
+  if (!pw) { err.textContent = 'Enter your password.'; return; }
+  if (mode === 'signup') {
+    if (pw.length < 8) { err.textContent = 'Use at least 8 characters.'; return; }
+    if (pw !== $('#aPw2').value) { err.textContent = "The two passwords don't match."; return; }
+    if (!$('#aInv').value.trim()) { err.textContent = 'Enter the invite code.'; return; }
+  }
+  go.disabled = true;
+  const label = go.textContent;
+  go.textContent = mode === 'signup' ? 'Creating…' : 'Unlocking…';
+  try {
+    const keys = await deriveKeys(id, pw);
+    let wrapped;
+    if (mode === 'signup') {
+      const dek = await crypto.subtle.generateKey({name: 'AES-GCM', length: 256}, true, ['encrypt', 'decrypt']);
+      wrapped = await wrapDek(dek, keys.kek);
+      await apiJSON('POST', 'signup', {json: {id, auth: keys.auth, wrapped, invite: $('#aInv').value.trim()}, noRelogin: true});
+    } else if (mode === 'unlock') {
+      wrapped = S.wrapped;
+    } else {
+      wrapped = (await apiJSON('POST', 'login', {json: {id, auth: keys.auth}, noRelogin: true})).wrapped;
+    }
+    let dek;
+    try { dek = await unwrapDek(wrapped, keys.kek); }
+    catch (x) { err.textContent = mode === 'unlock' ? 'Wrong password.' : "Couldn't open your key."; return; }
+    if (S.user && S.user !== id) { location.reload(); return; }
+    S.user = id; S.wrapped = wrapped; S.dek = dek; S.pw = pw;
+    localStorage.setItem('mp.id', id);
+    keySave(id, dek);
+    $('#auth').hidden = true;
+    $('#aPw').value = ''; $('#aPw2').value = '';
+    if (mode === 'relogin' && relogin) { const r = relogin; relogin = null; S.pw = null; r.resolve(); return; }
+    await enterApp();
+  } catch (x) {
+    err.textContent = x.message || 'Something went wrong.';
+  } finally {
+    go.disabled = false; go.textContent = label;
+  }
+});
+function needLogin() {
+  if (!relogin) {
+    let resolve;
+    const p = new Promise(r => { resolve = r; });
+    relogin = {p, resolve};
+    showAuth('relogin', {id: S.user || localStorage.getItem('mp.id') || ''});
+  }
+  return relogin.p;
+}
+async function logout() {
+  if (S.open && S.open.dirty) await flush();
+  try { await api('POST', 'logout', {noRelogin: true}); } catch (e) { /* offline: the cookie still goes */ }
+  await keyDrop();
+  location.replace(location.pathname);
+}
+function changePassword() {
+  return formDialog({
+    title: 'Change password',
+    text: 'Your notes stay as they are; only the lock on your key changes. Other devices will ask for the new password.',
+    fields: [
+      {name: 'cur', label: 'Current password', type: 'password', auto: 'current-password'},
+      {name: 'n1', label: 'New password', type: 'password', auto: 'new-password'},
+      {name: 'n2', label: 'New password again', type: 'password', auto: 'new-password'},
+    ],
+    ok: {label: 'Change password', run: async v => {
+      if (v.n1.length < 8) return 'Use at least 8 characters.';
+      if (v.n1 !== v.n2) return "The new passwords don't match.";
+      const me = await apiJSON('GET', 'me');
+      const old = await deriveKeys(S.user, v.cur);
+      let dek;
+      try { dek = await unwrapDek(me.wrapped, old.kek, true); } catch (e) { return 'Current password is wrong.'; }
+      const next = await deriveKeys(S.user, v.n1);
+      const wrapped = await wrapDek(dek, next.kek);
+      try { await api('POST', 'password', {json: {auth: old.auth, newAuth: next.auth, wrapped}}); }
+      catch (e) { return e.message; }
+      S.wrapped = wrapped;
+      toast('Password changed. Other devices will ask for the new one.');
+      return '';
+    }},
+  });
+}
+
+/* ==========================================================================
+   boot
+   ========================================================================== */
+async function enterApp() {
+  $('#who').textContent = S.user;
+  $('#avatar').textContent = S.user[0];
+  $('#app').hidden = false;
+  S.ready = true;
+  setCarries(pendingCarries());
+  try { await refreshTree(); } catch (e) { toast(e.message); }
+  const last = localStorage.getItem('mp.last');
+  const recent = [...S.notes.values()].sort((a, b) => b.updated - a.updated)[0];
+  const pick = S.notes.has(last) ? last : recent && recent.id;
+  if (pick) await loadNote(pick); else showEmpty();
+  if (pendingCarries().length) await runImports(!!(S.pw || S.freshCarry));
+  S.pw = null; S.freshCarry = false;
+}
+let lastRefresh = 0;
+async function refreshFromServer() {
+  if (!S.ready || !$('#auth').hidden || Date.now() - lastRefresh < 4000) return;
+  lastRefresh = Date.now();
+  try { await refreshTree(); } catch (e) { return; }
+  const o = S.open;
+  if (!o) return;
+  const m = S.notes.get(o.id);
+  if (!m) { if (!o.dirty && !o.saving) { showEmpty(); toast('That note was deleted on another device.'); } return; }
+  if (document.activeElement !== $('#title') && !titleT) $('#title').value = m.label || '';
+  if (m.rev > o.rev && !o.dirty && !o.saving) loadNote(o.id);   // newer version from another device
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (S.open && S.open.dirty) save(); }
+  else refreshFromServer();
+});
+window.addEventListener('focus', refreshFromServer);
+window.addEventListener('beforeunload', e => {
+  const o = S.open;
+  if (o && (o.dirty || o.saving || titleT)) { save(); if (titleT) saveTitle(); e.preventDefault(); e.returnValue = ''; }
+});
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (S.open) { if (titleT) saveTitle(); if (S.open.dirty) save(); else setStatus('saved'); }
+  }
+  if (e.key === 'Escape') $('#menu').hidden = true;
+});
+
+// #invite=<code>&carry=<id>.<key>[,<id>.<key>] : read, remember, and take out of the address bar.
+// True if it brought new imports.
+function readFragment() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('invite')) auth.invite = h.get('invite');
+  const fresh = (h.get('carry') || '').split(',').map(x => x.split('.'))
+    .filter(([id, k]) => IDRE.test(id || '') && /^[A-Za-z0-9_-]{43}$/.test(k || ''));
+  const list = pendingCarries();
+  let added = false;
+  for (const [id, k] of fresh) if (!list.some(c => c.id === id)) { list.push({id, k, at: Date.now()}); added = true; }
+  if (added) setCarries(list);
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  return added;
+}
+// An import link opened in a tab where mypager is already running only changes the fragment.
+window.addEventListener('hashchange', () => { if (readFragment() && S.ready && S.dek) runImports(true); });
+
+async function boot() {
+  S.freshCarry = readFragment();
+  let me = null;
+  try { me = await apiJSON('GET', 'me', {noRelogin: true}); }
+  catch (e) {
+    if (e.status !== 401) { showAuth('login', {id: localStorage.getItem('mp.id') || '', error: e.message}); return; }
+  }
+  if (me) {
+    S.user = me.id; S.wrapped = me.wrapped;
+    const k = await keyLoad();
+    if (k && k.id === me.id && k.dek) { S.dek = k.dek; return enterApp(); }
+    return showAuth('unlock', {id: me.id});
+  }
+  showAuth(auth.invite ? 'signup' : 'login', {id: localStorage.getItem('mp.id') || ''});
+}
+if (LIVE) boot();
+</script>
+
+<script>
+/* anonymous visit beacon (site-analytics): counts loads + presence heartbeats, no cookies */
+(function(){
+  if (location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  var EP = "https://site-analytics.vaibhavpro9210.workers.dev/ping";
+  var sid = sessionStorage.getItem("va_sid");
+  if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("va_sid", sid); }
+  /* served at the root of workers.dev: prefix the path so it doesn't collide with the portfolio homepage */
+  var pg = "/mypager" + location.pathname;
+  function send(kind){
+    try { navigator.sendBeacon(EP, new Blob([JSON.stringify({sid:sid, page:pg, kind:kind})], {type:"text/plain"})); } catch(e){}
+  }
+  send("load");
+  setInterval(function(){ if (document.visibilityState === "visible") send("beat"); }, 60000);
+})();
+</script>
+</body>
+</html>

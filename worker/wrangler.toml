@@ -1,0 +1,21 @@
+name = "mypager"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# The app (../app) is served as static assets; only /api/* reaches worker.js.
+[assets]
+directory = "../app"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "Store"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Store"]
+
+# Secret (set via `npx wrangler secret put INVITE_CODE`, never in this file):
+#   INVITE_CODE  needed to create an account. Value lives in ../.invite-code (gitignored).
+#                Unset means sign-up is closed; logging in still works.
+# Local dev reads it from .dev.vars (gitignored).

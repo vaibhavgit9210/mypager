@@ -1,0 +1,5 @@
+.invite-code
+.dev.vars
+.wrangler/
+node_modules/
+tests/out/
