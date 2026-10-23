@@ -28,6 +28,13 @@ const L = require('./lib.cjs');
   const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
   L.check('nothing spills off the side of the screen', noOverflow);
   await page.screenshot({path: L.SHOTS + '/phone-note.png'});
+  // the screenshot that started this: buttons sat on a long first line. Nothing may now (no input event, so no save).
+  await page.$eval('#root .pane .text', t => { t.innerHTML = '<ol><li>A Pylon rule moves some accounts\' US tickets away from the queue they came in on. The "Voice-IMP" automation sends tickets from accounts tagged</li></ol>'; });
+  const covered = await L.textCovered(page);
+  L.check('nothing on the pane covers its text', covered.length === 0, covered);
+  L.check('a lone pane has no grabber, the toolbar has the pane switch', await page.evaluate(() =>
+    getComputedStyle(document.querySelector('#root .pane .grab')).display === 'none' && !!document.querySelector('#bar #modeText')));
+  await page.screenshot({path: L.SHOTS + '/phone-long-line.png'});
   await browser.close();
   console.log(L.fails ? 'fails: ' + L.fails : 'all passed');
   process.exit(L.fails ? 1 : 0);

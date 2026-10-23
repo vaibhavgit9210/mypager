@@ -28,8 +28,14 @@ const saved = page => L.waitFor(page, () => S.open && !S.open.dirty && !S.open.s
   await page.keyboard.type('first line');
   await page.click('#splitH');
   const panes = await page.$$('#root .pane');
+  // a long first line in both panes: the pane's grabber must sit clear of it (no saving: no input event)
+  await page.$$eval('#root .pane .text', ts => ts.forEach(t => { t.dataset.was = t.innerHTML; t.innerHTML = 'A Pylon rule moves some accounts\' US tickets away from the queue. '.repeat(4); }));
+  const covered = await L.textCovered(page);
+  L.check('two panes: grabbers show and miss the text', covered.length === 0 && await page.$$eval('#root .pane .grab', gs => gs.every(g => getComputedStyle(g).display !== 'none')), covered);
+  await page.$$eval('#root .pane .text', ts => ts.forEach(t => { t.innerHTML = t.dataset.was; delete t.dataset.was; }));
   await panes[1].click();
-  await panes[1].$eval('.mini .md', b => b.click());
+  await page.click('#modeDraw');                       // the toolbar switches the selected pane
+  L.check('toolbar shows the selected pane is a drawing', await page.$eval('#modeDraw', b => b.classList.contains('on') && b.getAttribute('aria-pressed') === 'true'));
   const box = await (await panes[1].$('canvas')).boundingBox();
   await page.mouse.move(box.x + 30, box.y + 30); await page.mouse.down();
   for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 30 + i * 20, box.y + 30 + i * 6);

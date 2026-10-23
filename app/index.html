@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0b0d10">
+<meta name="theme-color" content="#0a0c10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="mypager">
 <title>mypager</title>
@@ -12,79 +12,99 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
   :root{
-    --bg:#0b0d10; --side:#0e1014; --panel:#121418; --raise:#191c22; --hover:#1c2027;
-    --line:#22262d; --line2:#2e333c; --fg:#e6e8ec; --muted:#8b93a1; --faint:#5f6774;
-    --accent:#5aa2ff; --accent2:#7db6ff; --accent-ink:#06101c; --sel:#18263a;
+    --bg:#0a0c10; --panel:#121419; --raise:#1a1d23; --hover:rgba(255,255,255,.075);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.13); --fg:#e8eaee; --muted:#8e96a3; --faint:#5f6774;
+    --accent:#5aa2ff; --accent2:#7db6ff; --accent-ink:#06101c; --sel:rgba(90,162,255,.17);
     --ok:#47c08a; --warn:#e2b04a; --bad:#ff6b6b;
-    --side-w:272px; --top-h:50px;
+    --side-w:272px; --top-h:52px; --gap:8px;
+    /* glass, the macOS 26+ material: a translucent fill that blurs what is behind it, a bright top rim, a soft drop */
+    --glass:rgba(32,36,45,.55); --glass-solid:rgba(25,28,35,.86);
+    --blur:blur(24px) saturate(170%);
+    --rim:inset 0 .5px 0 rgba(255,255,255,.2), inset 0 0 0 .5px rgba(255,255,255,.07);
+    --drop:0 10px 30px rgba(0,0,0,.32), 0 1px 3px rgba(0,0,0,.22);
     color-scheme:dark;
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
   body{
-    background:var(--bg); color:var(--fg); overflow:hidden;
-    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
+    color:var(--fg); overflow:hidden;
+    background:
+      radial-gradient(1200px 760px at -8% -18%, rgba(90,162,255,.12), transparent 62%),
+      radial-gradient(1000px 700px at 108% 118%, rgba(150,118,255,.09), transparent 60%),
+      var(--bg);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
   }
   [hidden]{display:none !important}
   button,input,select{font:inherit;color:inherit}
   a{color:var(--accent2)}
   .ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
-  .ib{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;flex:none}
+  .ib{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;flex:none;transition:background-color .15s,color .15s}
   .ib:hover{background:var(--hover);color:var(--fg)}
-  .btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);background:var(--raise);cursor:pointer;font-weight:550;white-space:nowrap}
-  .btn:hover{border-color:#3b424d}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-  .btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
-  .btn.danger{background:#3a1518;border-color:#5c2228;color:#ffb3b3}
-  .btn.danger:hover{background:#4a1a1f}
-  .btn:disabled{opacity:.6;cursor:default}
+  .btn{
+    height:36px; padding:0 16px; border:0; border-radius:999px; background:rgba(255,255,255,.08);
+    box-shadow:inset 0 .5px 0 rgba(255,255,255,.14); cursor:pointer; font-weight:550; white-space:nowrap;
+    transition:background-color .15s, transform .1s;
+  }
+  .btn:hover{background:rgba(255,255,255,.13)}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:inset 0 .5px 0 rgba(255,255,255,.45),0 4px 16px rgba(90,162,255,.26)}
+  .btn.primary:hover{background:var(--accent2)}
+  .btn.danger{background:rgba(255,107,107,.16);color:#ffb3b3}
+  .btn.danger:hover{background:rgba(255,107,107,.25)}
+  .btn:disabled{opacity:.6;cursor:default;transform:none}
   .logo{width:28px;height:28px;flex:none}
 
   /* ---------- log in / sign up ---------- */
   #auth{
     position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:24px; overflow:auto;
-    background:radial-gradient(1100px 560px at 50% -12%, #13233a 0%, var(--bg) 62%);
+    background:
+      radial-gradient(760px 520px at 18% 4%, rgba(90,162,255,.28), transparent 62%),
+      radial-gradient(720px 560px at 88% 96%, rgba(150,118,255,.22), transparent 62%),
+      radial-gradient(520px 380px at 72% 28%, rgba(71,192,138,.09), transparent 60%),
+      var(--bg);
   }
   .card{
-    width:min(372px,100%); display:flex; flex-direction:column; gap:12px; padding:28px;
-    border:1px solid var(--line); border-radius:16px; background:rgba(17,19,23,.94);
-    box-shadow:0 24px 70px rgba(0,0,0,.45);
+    width:min(380px,100%); display:flex; flex-direction:column; gap:12px; padding:30px 28px 26px;
+    border-radius:28px; background:var(--glass); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), 0 30px 80px rgba(0,0,0,.45);
   }
   .brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:20px;letter-spacing:-.01em}
   .card .sub{margin:-4px 0 4px;color:var(--muted)}
   .field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
   .field input{
-    height:42px; padding:0 12px; border-radius:9px; border:1px solid var(--line2);
-    background:var(--bg); color:var(--fg); font-size:16px; outline:none;
+    height:44px; padding:0 14px; border:0; border-radius:12px; background:rgba(0,0,0,.28);
+    box-shadow:inset 0 0 0 .5px var(--line2); color:var(--fg); font-size:16px; outline:none; transition:box-shadow .15s;
   }
-  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(90,162,255,.18)}
+  .field input:focus{box-shadow:inset 0 0 0 1px var(--accent),0 0 0 4px rgba(90,162,255,.2)}
   .field input[readonly]{color:var(--muted)}
   .err{min-height:18px;margin:0;color:var(--bad);font-size:13px}
-  .note-box{margin:0;padding:10px 12px;border-radius:9px;background:var(--sel);color:#cfe2ff;font-size:13px}
+  .note-box{margin:0;padding:10px 12px;border-radius:12px;background:var(--sel);color:#cfe2ff;font-size:13px}
   .alt{margin:0;text-align:center;font-size:13px}
   .link{color:var(--accent2);background:none;border:0;padding:0;cursor:pointer;font-size:13px;text-decoration:none}
   .link:hover{text-decoration:underline}
   .fine{margin:0;color:var(--faint);font-size:12px;line-height:1.5}
 
-  /* ---------- shell ---------- */
+  /* ---------- shell: a floating glass sidebar beside the note ---------- */
   #app{display:flex;height:100%}
   #side{
     width:var(--side-w); flex:none; display:flex; flex-direction:column; min-height:0;
-    background:var(--side); border-right:1px solid var(--line);
+    margin:var(--gap) 0 var(--gap) var(--gap); border-radius:20px; overflow:hidden;
+    background:var(--glass); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), var(--drop);
   }
-  .side-top{display:flex;align-items:center;gap:2px;height:var(--top-h);padding:0 8px 0 14px;border-bottom:1px solid var(--line)}
+  .side-top{display:flex;align-items:center;gap:2px;height:var(--top-h);padding:0 8px 0 16px}
   .side-top .brand{flex:1;font-size:15px;gap:9px;cursor:pointer;user-select:none}
   .side-top .logo{width:22px;height:22px}
-  #tree{flex:1;overflow:auto;padding:6px 6px 16px}
+  #tree{flex:1;overflow:auto;padding:2px 8px 16px}
   #tree.drop-root{background:rgba(90,162,255,.06)}
   .item{
     position:relative; display:flex; align-items:center; gap:7px; height:32px;
-    padding:0 4px 0 calc(8px + var(--d,0) * 16px); border-radius:7px; cursor:pointer; user-select:none;
+    padding:0 4px 0 calc(8px + var(--d,0) * 16px); border-radius:10px; cursor:pointer; user-select:none;
   }
   .item:hover{background:var(--hover)}
   .item.on{background:var(--sel)}
-  .item.cwd{box-shadow:inset 2px 0 0 var(--accent)}
+  .item.cwd::before{content:"";position:absolute;left:1px;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--accent)}
   .item.drop{background:var(--sel);box-shadow:inset 0 0 0 1px var(--accent)}
   .item .ic{width:16px;height:16px;color:var(--muted)}
   .item.on .ic{color:var(--accent2)}
@@ -99,66 +119,79 @@
   .caret .ic{width:12px;height:12px;transition:transform .12s}
   .caret.open .ic{transform:rotate(90deg)}
   .item input.rename{
-    flex:1; min-width:0; height:24px; padding:0 6px; border-radius:5px; border:1px solid var(--accent);
+    flex:1; min-width:0; height:24px; padding:0 6px; border-radius:6px; border:1px solid var(--accent);
     background:var(--bg); color:var(--fg); outline:none;
   }
   .tree-empty{padding:14px 10px;color:var(--faint);font-size:13px}
-  .side-foot{display:flex;align-items:center;gap:6px;padding:8px 8px 10px 14px;border-top:1px solid var(--line)}
+  .side-foot{display:flex;align-items:center;gap:6px;padding:10px 10px 12px 16px;border-top:.5px solid var(--line)}
   .who{flex:1;min-width:0;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
   .who b{font-weight:550;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .avatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#1d2b40;color:var(--accent2);font-weight:700;font-size:12px;flex:none;text-transform:uppercase}
   .badge{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:700;display:inline-grid;place-items:center}
   #scrim{display:none}
 
-  #main{flex:1;min-width:0;display:flex;flex-direction:column}
-  #top{display:flex;align-items:center;gap:6px;height:var(--top-h);padding:0 10px;border-bottom:1px solid var(--line)}
+  #main{flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--gap)}
+  #top{display:flex;align-items:center;gap:6px;height:var(--top-h);padding:0 2px}
   #title{
-    flex:1; min-width:0; height:34px; padding:0 8px; border:1px solid transparent; border-radius:8px;
-    background:transparent; color:var(--fg); font-size:16px; font-weight:600; outline:none;
+    flex:1; min-width:0; height:36px; padding:0 10px; border:0; border-radius:10px;
+    background:transparent; color:var(--fg); font-size:17px; font-weight:650; letter-spacing:-.01em; outline:none;
+    transition:background-color .15s, box-shadow .15s;
   }
   #title::placeholder{color:var(--faint)}
-  #title:hover{border-color:var(--line)}
-  #title:focus{border-color:var(--line2);background:var(--panel)}
+  #title:hover{background:rgba(255,255,255,.04)}
+  #title:focus{background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 .5px var(--line2)}
   .spacer{flex:1}
-  .status{display:flex;align-items:center;gap:6px;color:var(--faint);font-size:12px;white-space:nowrap;padding:0 4px}
+  .status{display:flex;align-items:center;gap:6px;color:var(--faint);font-size:12px;white-space:nowrap;padding:0 6px}
   .status i{width:7px;height:7px;border-radius:50%;background:transparent}
-  .status.saved i{background:var(--ok)}
+  .status.saved i{background:var(--ok);box-shadow:0 0 6px rgba(71,192,138,.6)}
   .status.saving i,.status.unsaved i,.status.loading i{background:var(--warn)}
   .status.offline i,.status.error i{background:var(--bad)}
   .status.offline,.status.error{color:#ffb3b3}
 
-  /* ---------- toolbar ---------- */
+  /* ---------- toolbar: groups of tools on glass capsules ---------- */
   #bar{
-    display:flex; align-items:center; gap:2px; padding:6px 8px; flex:none;
-    border-bottom:1px solid var(--line); background:#0d0f13; overflow-x:auto; scrollbar-width:none; user-select:none;
+    display:flex; align-items:center; gap:8px; padding:2px 2px 10px; margin:0 -2px; flex:none;
+    overflow-x:auto; scrollbar-width:none; user-select:none; -webkit-user-select:none;
   }
   #bar::-webkit-scrollbar{display:none}
-  .grp{display:flex;align-items:center;gap:2px;padding:0 6px;border-right:1px solid var(--line);flex:none}
-  .grp:first-child{padding-left:0}
-  .grp:last-child{border-right:0}
+  .grp{
+    display:flex; align-items:center; gap:1px; padding:3px; flex:none; border-radius:999px;
+    background:var(--glass); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), 0 4px 14px rgba(0,0,0,.2);
+  }
   .t{
-    display:inline-grid; place-items:center; height:30px; min-width:30px; padding:0 7px;
-    border:1px solid transparent; border-radius:7px; background:transparent; color:var(--fg); cursor:pointer; font-size:13px;
+    display:inline-grid; place-items:center; height:30px; min-width:30px; padding:0 8px;
+    border:0; border-radius:999px; background-color:transparent; color:var(--fg); cursor:pointer; font-size:13px;
+    transition:background-color .15s, color .15s;
   }
   .t .ic{width:17px;height:17px}
-  .t:hover{background:var(--hover);border-color:var(--line)}
-  .t.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-  select.t{appearance:none;-webkit-appearance:none;padding:0 9px;background:var(--panel);border-color:var(--line)}
-  .swatch{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:7px;cursor:pointer}
+  .t:hover{background-color:var(--hover)}
+  .t.on{background-color:var(--accent);color:var(--accent-ink)}
+  select.t{
+    appearance:none; -webkit-appearance:none; padding:0 24px 0 11px; background-color:rgba(255,255,255,.06);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%238e96a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 8px center; background-size:10px 10px;
+  }
+  /* which kind of pane: Text | Drawing, a segmented control for the selected pane */
+  .seg{display:flex;gap:2px;padding:2px;margin-right:3px;border-radius:999px;background:rgba(0,0,0,.28)}
+  .seg .t{height:26px;min-width:34px}
+  .seg .t.on{background-color:rgba(255,255,255,.17);color:var(--fg);box-shadow:inset 0 .5px 0 rgba(255,255,255,.28),0 1px 3px rgba(0,0,0,.3)}
+  .swatch{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;cursor:pointer}
   .swatch:hover{background:var(--hover)}
   .swatch span{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.16)}
   .swatch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
 
-  /* ---------- board ---------- */
+  /* ---------- board: panes are rounded cards with a small gap between them ---------- */
   #root{flex:1;min-height:0;display:flex}
   .split{display:flex;flex:1;min-width:0;min-height:0}
   .split.row{flex-direction:row}
   .split.col{flex-direction:column}
   .pane{
     flex:1; min-width:0; min-height:0; position:relative; overflow:hidden;
-    display:flex; flex-direction:column; background:var(--panel);
+    display:flex; flex-direction:column; background:var(--panel); border-radius:16px;
+    box-shadow:inset 0 0 0 .5px var(--line); transition:box-shadow .15s;
   }
-  .pane.active{outline:2px solid var(--accent);outline-offset:-2px;z-index:1}
+  .pane.active{box-shadow:inset 0 0 0 1.5px var(--accent),0 0 0 4px rgba(90,162,255,.13);z-index:1}
   /* size container: pictures size themselves against the pane, never the other way round */
   .pane .content{flex:1;min-height:0;position:relative;overflow:hidden;container-type:size}
   .pane .text{
@@ -168,7 +201,7 @@
   .pane .text ul,.pane .text ol{padding-left:1.4em}
   .pane .text img{
     max-width:100%; max-height:calc(100cqh - 28px); width:auto; height:auto;
-    vertical-align:bottom; border-radius:4px; cursor:grab;
+    vertical-align:bottom; border-radius:6px; cursor:grab;
   }
   /* pictures added here carry their ratio (--ar = w/h) and fill the pane as far as that ratio allows */
   .pane .text img[style*="--ar"]{
@@ -184,21 +217,25 @@
   .pane.dragging{opacity:.4}
   .pane.dragover{outline:2px dashed var(--accent);outline-offset:-2px}
 
-  .pane .mini{position:absolute;top:6px;right:6px;z-index:5;display:flex;gap:3px;opacity:0;transition:opacity .15s}
-  .pane:hover .mini,.pane.active .mini{opacity:1}
-  .mini button{
-    display:grid; place-items:center; width:26px; height:26px; padding:0; cursor:pointer;
-    background:rgba(9,11,14,.74); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-    color:var(--fg); border:1px solid var(--line2); border-radius:7px;
+  /* drag handle for swapping panes: a grabber in the pane's empty top margin, clear of the text.
+     The pane's other actions live in the toolbar and act on the selected pane. */
+  .pane .grab{
+    position:absolute; top:1px; left:50%; z-index:5; width:64px; height:13px; margin-left:-32px;
+    display:grid; place-items:center; cursor:grab; opacity:.55; transition:opacity .15s;
   }
-  .mini button .ic{width:14px;height:14px}
-  .mini button:hover{border-color:#4a5360;background:#000}
-  .mini .mv{cursor:grab}
-  .mini .mv:active{cursor:grabbing}
+  .pane .grab i{display:block;width:36px;height:5px;border-radius:3px;background:rgba(255,255,255,.3);transition:background-color .15s}
+  .pane:hover .grab,.pane.active .grab{opacity:1}
+  .pane .grab:hover i{background:var(--accent)}
+  .pane .grab:active{cursor:grabbing}
+  #root > .pane .grab{display:none}   /* a lone pane has nothing to swap with */
 
-  .gutter{position:relative;z-index:3;flex:0 0 5px;background:var(--line);touch-action:none}
+  .gutter{position:relative;z-index:3;flex:0 0 var(--gap);touch-action:none}
   .gutter::after{content:"";position:absolute;inset:-3px}
-  .gutter:hover,.gutter.on{background:var(--accent)}
+  .gutter::before{content:"";position:absolute;top:50%;left:50%;border-radius:3px;background:rgba(255,255,255,.16);opacity:0;transition:opacity .15s, background-color .15s}
+  .split.row>.gutter::before{width:4px;height:40px;margin:-20px 0 0 -2px}
+  .split.col>.gutter::before{width:40px;height:4px;margin:-2px 0 0 -20px}
+  .gutter:hover::before{opacity:1}
+  .gutter.on::before{opacity:1;background:var(--accent)}
   .split.row>.gutter{cursor:col-resize}
   .split.col>.gutter{cursor:row-resize}
 
@@ -210,53 +247,72 @@
   #empty .logo{width:44px;height:44px;opacity:.9}
   #empty .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 
-  /* ---------- menus, dialogs, toast ---------- */
+  /* ---------- menus, dialogs, toast: glass over whatever is behind ---------- */
   .menu{
-    position:fixed; z-index:60; min-width:200px; padding:5px; border:1px solid var(--line2); border-radius:11px;
-    background:#15181d; box-shadow:0 14px 44px rgba(0,0,0,.5);
+    position:fixed; z-index:60; min-width:210px; padding:6px; border-radius:14px;
+    background:var(--glass-solid); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), 0 18px 50px rgba(0,0,0,.5);
   }
   .menu button{
-    display:flex; align-items:center; gap:10px; width:100%; height:33px; padding:0 10px;
-    border:0; border-radius:7px; background:none; text-align:left; cursor:pointer; font-size:13px;
+    display:flex; align-items:center; gap:10px; width:100%; height:32px; padding:0 10px;
+    border:0; border-radius:8px; background:none; text-align:left; cursor:pointer; font-size:13px;
   }
-  .menu button:hover{background:var(--hover)}
+  .menu button:hover{background:var(--accent);color:var(--accent-ink)}
   .menu button .ic{width:16px;height:16px;color:var(--muted)}
+  .menu button:hover .ic{color:inherit}
   .menu button.danger,.menu button.danger .ic{color:var(--bad)}
-  .menu hr{border:0;border-top:1px solid var(--line);margin:5px 3px}
-  .modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.55)}
-  .dialog{
-    width:min(430px,100%); max-height:86vh; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:22px;
-    border:1px solid var(--line2); border-radius:15px; background:#14171c; box-shadow:0 26px 76px rgba(0,0,0,.55);
+  .menu button.danger:hover,.menu button.danger:hover .ic{background:var(--bad);color:#fff}
+  .menu hr{border:0;border-top:.5px solid var(--line2);margin:5px 8px}
+  .modal{
+    position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:20px;
+    background:rgba(0,0,0,.42); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
   }
-  .dialog h3{margin:0;font-size:17px;font-weight:600}
+  .dialog{
+    width:min(430px,100%); max-height:86vh; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:24px;
+    border-radius:24px; background:var(--glass-solid); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), 0 30px 80px rgba(0,0,0,.55);
+  }
+  .dialog h3{margin:0;font-size:17px;font-weight:650}
   .dialog p{margin:0;color:var(--muted)}
   .dialog .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:4px}
   .dialog .err{margin-top:-4px}
-  .picker{max-height:300px;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:10px}
+  .picker{max-height:300px;overflow:auto;padding:4px;border-radius:14px;background:rgba(0,0,0,.22);box-shadow:inset 0 0 0 .5px var(--line)}
   .picker .item.sel{background:var(--sel);box-shadow:inset 0 0 0 1px var(--accent)}
   #toast{
     position:fixed; left:50%; bottom:22px; z-index:80; max-width:min(560px,calc(100% - 32px));
-    padding:10px 14px; border:1px solid var(--line2); border-radius:10px; background:#1a1e24; color:var(--fg);
-    box-shadow:0 14px 44px rgba(0,0,0,.45); opacity:0; pointer-events:none;
-    transform:translate(-50%,16px); transition:opacity .2s, transform .2s;
+    padding:11px 18px; border-radius:20px; color:var(--fg);
+    background:var(--glass-solid); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:var(--rim), 0 14px 44px rgba(0,0,0,.45); opacity:0; pointer-events:none;
+    transform:translate(-50%,16px); transition:opacity .2s, transform .25s cubic-bezier(.2,.8,.2,1);
   }
   #toast.show{opacity:1;transform:translate(-50%,0)}
 
   /* ---------- small screens: the list becomes a drawer ---------- */
   @media (max-width:760px){
-    #side{position:fixed;left:0;top:0;bottom:0;z-index:30;width:min(86vw,320px);transform:translateX(-102%);transition:transform .2s ease;box-shadow:0 0 44px rgba(0,0,0,.55)}
+    #side{
+      position:fixed; left:0; top:0; bottom:0; z-index:30; width:min(86vw,320px); margin:var(--gap); border-radius:24px;
+      background:var(--glass-solid); box-shadow:var(--rim), 0 20px 60px rgba(0,0,0,.6);
+      transform:translateX(calc(-100% - 2 * var(--gap))); transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    }
     body.side-open #side{transform:none}
-    #scrim{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.45)}
+    #scrim{position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.4)}
     body.side-open #scrim{display:block}
+    #main{padding:0 6px 6px}
     .item{height:40px}
     .item .more{opacity:1}
     .item time{display:none}
     .item input.rename{font-size:16px}
     .status b{display:none}
     #title{font-size:16px}
+    .pane{border-radius:14px}
   }
   @media (min-width:761px){
     body.side-closed #side{display:none}
+  }
+  /* Reduce Transparency (System Settings > Accessibility > Display): solid surfaces, no blur */
+  @media (prefers-reduced-transparency:reduce){
+    :root{--glass:#1a1d23;--glass-solid:#1a1d23}
+    #side,.grp,.card,.menu,.modal,.dialog,#toast{-webkit-backdrop-filter:none;backdrop-filter:none}
   }
 </style>
 </head>
@@ -279,7 +335,6 @@
   <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/></symbol>
   <symbol id="i-type" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol>
   <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M9 19.5h11M5.6 15.6l8.5-8.5a2 2 0 0 1 2.8 0l2 2a2 2 0 0 1 0 2.8l-7.3 7.3a1 1 0 0 1-.7.3H9.2a1 1 0 0 1-.7-.3l-2.9-2.9a1 1 0 0 1 0-1.4z"/><path d="M10 11l5 5"/></symbol>
-  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-2.5 2.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></symbol>
   <symbol id="i-ul" viewBox="0 0 24 24"><path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10"/><circle cx="5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-ol" viewBox="0 0 24 24"><path d="M10 6.5h10M10 12h10M10 17.5h10M4.3 5.2l1.4-.7v4.1M4 12c.4-.8 2.3-.9 2.3.3 0 1-2.3 1.8-2.3 2.7h2.5"/></symbol>
   <symbol id="i-al" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
@@ -348,7 +403,11 @@
     </header>
 
     <div id="bar" hidden>
-      <div class="grp">
+      <div class="grp" id="paneTools">
+        <div class="seg" role="group" aria-label="The selected pane holds">
+          <button class="t on" id="modeText" title="Text: type in this pane" aria-pressed="true"><svg class="ic"><use href="#i-type"/></svg></button>
+          <button class="t" id="modeDraw" title="Drawing: draw in this pane" aria-pressed="false"><svg class="ic"><use href="#i-pen"/></svg></button>
+        </div>
         <button class="t" id="splitV" title="Split left / right"><svg class="ic"><use href="#i-split-v"/></svg></button>
         <button class="t" id="splitH" title="Split top / bottom"><svg class="ic"><use href="#i-split-h"/></svg></button>
         <button class="t" id="del" title="Remove this pane"><svg class="ic"><use href="#i-pane-x"/></svg></button>
@@ -877,17 +936,10 @@ const ro = new ResizeObserver(entries => { for (const en of entries) { const p =
 function makePane() {
   const p = document.createElement('div');
   p.className = 'pane';
-  p.innerHTML = `<div class="mini">
-      <button type="button" class="mv" title="Drag to move or swap this pane" draggable="true">${icon('move')}</button>
-      <button type="button" class="md" title="Switch to drawing">${icon('pen')}</button>
-      <button type="button" class="sv" title="Split left / right">${icon('split-v')}</button>
-      <button type="button" class="sh" title="Split top / bottom">${icon('split-h')}</button>
-    </div>
+  // No buttons over the text: the toolbar acts on the selected pane, and the grabber sits in the top margin.
+  p.innerHTML = `<div class="grab" title="Drag onto another pane to swap them" draggable="true"><i></i></div>
     <div class="content"><div class="text" contenteditable="true" spellcheck="false"></div><canvas></canvas></div>`;
-  const mini = p.querySelector('.mini'), mv = mini.querySelector('.mv');
-  mini.querySelector('.md').onclick = e => { e.stopPropagation(); toggleMode(p); changed(); };
-  mini.querySelector('.sv').onclick = e => { e.stopPropagation(); setActive(p); split('row'); };
-  mini.querySelector('.sh').onclick = e => { e.stopPropagation(); setActive(p); split('col'); };
+  const mv = p.querySelector('.grab');
   p.addEventListener('pointerdown', () => setActive(p));
   mv.addEventListener('dragstart', e => {
     dragSrc = p;
@@ -917,13 +969,17 @@ function setActive(p) {
   if (active) active.classList.remove('active');
   active = p;
   p.classList.add('active');
-  $('#erase').classList.toggle('on', p.dataset.erase === '1');
+  syncPaneTools();
+}
+// The toolbar's Text | Drawing switch and eraser show the selected pane's state.
+function syncPaneTools() {
+  const draw = !!active && active.classList.contains('draw');
+  for (const [b, on] of [[$('#modeText'), !draw], [$('#modeDraw'), draw]]) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }
+  $('#erase').classList.toggle('on', !!active && active.dataset.erase === '1');
 }
 function setMode(p, draw) {
   p.classList.toggle('draw', draw);
-  const b = p.querySelector('.mini .md');
-  b.innerHTML = icon(draw ? 'type' : 'pen');
-  b.title = draw ? 'Switch to text' : 'Switch to drawing';
+  if (p === active) syncPaneTools();
   fitCanvas(p);
 }
 function toggleMode(p) {
@@ -1269,6 +1325,8 @@ $('#clearPane').onclick = () => {
   blit(cv);
   changed();
 };
+$('#modeText').onclick = () => { if (active && active.classList.contains('draw')) { toggleMode(active); changed(); } };
+$('#modeDraw').onclick = () => { if (active && !active.classList.contains('draw')) { toggleMode(active); changed(); } };
 $('#splitV').onclick = () => split('row');
 $('#splitH').onclick = () => split('col');
 $('#del').onclick = deletePane;

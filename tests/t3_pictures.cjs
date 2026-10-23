@@ -120,7 +120,8 @@ const saved = page => L.waitFor(page, () => S.open && !S.open.dirty && !S.open.s
 
   // 6. a pane in draw mode still takes a dropped picture (into its text layer, under the ink)
   const panes = await page.$$('#root .pane');
-  await panes[1].$eval('.mini .md', b => b.click());
+  await panes[1].click();
+  await page.click('#modeDraw');
   const p1b = await paneBox(page, 1);
   await dropAt(page, p1b.x + p1b.w / 2, p1b.y + p1b.h - 10, tall);
   await L.waitFor(page, () => document.querySelectorAll('#root .pane')[1].querySelectorAll('.text img').length === 2);

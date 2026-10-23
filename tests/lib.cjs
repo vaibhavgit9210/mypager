@@ -65,4 +65,20 @@ async function login(page, id = 'vaibhav', pw = 'board-pass-1') {
   await page.click('#authGo');
   await waitFor(page, () => typeof S !== 'undefined' && S.ready && document.querySelector('#auth').hidden, null, 30000);
 }
-module.exports = {login, puppeteer, fs, path, WORK, SHOTS, APP, SITE, check, sleep, launch, wire, waitFor, png, get fails() { return fails; }};
+// Anything a pane draws over its text (every child but .content) must miss the text's lines.
+// Returns the overlaps, so [] is a pass.
+function textCovered(page) {
+  return page.$$eval('#root .pane', ps => ps.flatMap((p, i) => {
+    const r = document.createRange();
+    r.selectNodeContents(p.querySelector('.text'));
+    const lines = [...r.getClientRects()].filter(b => b.width && b.height), hits = [];
+    for (const c of p.children) {
+      const cs = getComputedStyle(c);
+      if (c.classList.contains('content') || cs.display === 'none' || +cs.opacity === 0) continue;
+      const b = c.getBoundingClientRect();
+      for (const l of lines) if (b.left < l.right && b.right > l.left && b.top < l.bottom && b.bottom > l.top) hits.push({pane: i, el: c.className, line: Math.round(l.top)});
+    }
+    return hits;
+  }));
+}
+module.exports = {login, textCovered, puppeteer, fs, path, WORK, SHOTS, APP, SITE, check, sleep, launch, wire, waitFor, png, get fails() { return fails; }};

@@ -83,6 +83,13 @@ User-facing overview in `README.md`.
 - Pane HTML always passes through `clean()`/`scrub()` on load and after paste. It drops scripts,
   frames, `on*`, **and `id`/`name`**: named elements would clobber `document.*` lookups.
 - `S` is a top-level `const`: tests read it as `S`, not `window.S`.
+- **Nothing sits on a pane's text.** Pane actions (Text | Drawing switch, split, remove) live in the toolbar's
+  `#paneTools` group and act on the selected pane; the only thing drawn on a pane is `.grab`, the swap handle in
+  its 14 px top margin (hidden when the note has one pane). A cluster of buttons there once covered the first
+  line on phones. `textCovered()` in `tests/lib.cjs` checks it (t2, t5).
+- Look: macOS 26+ "glass" (translucent fill + `backdrop-filter` blur, bright top rim) on the sidebar, toolbar
+  capsules, menus, dialogs and toast; panes are solid rounded cards. `--glass*`, `--blur`, `--rim` in `:root`;
+  Reduce Transparency switches to solid fills.
 
 ## Imports (moving off the old apps)
 
